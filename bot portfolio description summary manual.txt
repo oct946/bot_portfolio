@@ -1,0 +1,469 @@
+Kakuzu and Tsunade are 2 private Discord bots made only for the Outcasters community.
+Outcasters is a Discord server for crypto discussions and crypto games.
+These 2 bots are here to help our community understand the games we play on a very advanced level and
+give meaningful insights into the crypto space.
+Kakuzu is a classic Discord bot based on slash commands (except I replaced slash with his name for
+an easier usecase for the games of the community), while Tsunade is an AI trained specifically on
+information about our Guild and the games we play. We have several featured games, but our main focus is
+Genopets - a move-to-earn crypto game inspired by Pokemon Go and Tamagotchi.
+
+
+* Technologies and tools used for Kakuzu and Tsunade *
+
+Modules and libraries for Python:
+- Discord py (for methods of commands and Discord gateways for bots)
+- requests (for scraping crypto prices from Crypto.com and Genopets API)
+- Beautiful Soup 4 (for scraping Magic Eden)
+- Undetected Chromedriver (for simulating human browsing for scraping)
+- JSON - for all the APIs (Solscan, Magic Eden, Genopets.me, Crypto.com)
+- random (mainly for choosing replies for errors or certain commands)
+- time (for automatic resets, refreshing scraped data and automatically ending certain functions)
+- threading (for certain async functions)
+- OS (for environment variables)
+- pandas (for storing and reading scraped and embedded data)
+- OpenAI (for the GPT API)
+- ast (for GPT string embeddings)
+- numpy (for string embeddings)
+- scipy (for cosine similarity for GPT inputs and outpus)
+- tiktoken (for controlling the number of tokens that GPT uses)
+- asyncio (for automatic async function continuation or end)
+
+
+
+* Kakuzu - general summary and description *
+
+Kakuzu is focused on web scraping (Magic Eden's Genopets creator page, Crypto.com and Genopets' API).
+I created Kakuzu based on the need of our community to quickly search and rank the Genopets NFTs and SFTs
+and offer analysis on their prices. Magic Eden is a slow site, but Kakuzu is able to scrape it very fast
+thanks to direct access to the Magic Eden API. This API has a cloud protection that stops bots from
+scraping, but, thanks to the undetected_chromedriver python module, Kakuzu is able to browse Magic Eden
+just like any normal person is able to. (Magic Eden is the official marketplace of Genopets.)
+
+Kakuzu can:
+- scrape all the NFT and SFT prices of Genopets from Magic Eden
+- evaluate prices and calculate mint costs, so our community always knows if they are making a good deal
+- get NFT and SFT supply information directly from the Solana blockchain (through the Solscan API)
+- calculate best harvest and alchemy shares (specific features of Genopets) based on market conditions
+- display all the information of each and every specific NFT or SFT as well as useful links
+- give humourous replies if there are any errors or specific command usecases
+- filter what members he replies to, based on their role and rank in our community
+On top of these features, some of Kakuzu's commands are only limited to upper ranks in our Guild.
+Kakuzu also has an anti-spam feature, that prevents users for spamming his commands over and over again.
+Each command has its cooldown in a specific channel in our Discord. When that limit has been reached by a
+certain user, Kakuzu will first give them a warning (also pretty humourous), after which he will 'kill'
+that user, ignoring them after (more detail about this feature in his user manual).
+
+
+* Kakuzu's command list *
+
+Functions (separate from commands):
+- check_if_oncooldown: stores user command cooldowns to know how many times a user wrote a command in a
+certain period of time
+- get_geno_coins - scrapes Solana, Gene and Ki prices and stores and uses them in the other functions
+- get_crystals, get_seeds, get_alkali, get_reagents, get_food_toys, get_augments, get_cosmetics - scrapes 
+the corresponding SFT prices from Magic Eden's Genopets creator category and uses some of them for other 
+functions as globals
+- get_gpets, get_nhabs, get_ghabs - scrapes the corresponding NFT prices from Magic Eden and uses them for
+the other functions as globals
+- get_core_values - calls all the scraping functions continiously in certain intervals of time
+
+Commands (decorated functions that can be called by users in Discord):
+- ping: checks if he is online
+- i: random humourous replies based on whatever users want to tell kakuzu
+- price: scrapes crypto coins and tokens prices from crypto.com (previously from CoinMarketCap)
+- convert: swap a coin into another coin's equivalent amount
+- rent: calculate alchemy rent for Genopets Habitats (specific in-game action where landlords rent their
+Habitats to players) - has automatic calculations based on market conditions and automatic discounts for
+a longer renting periods
+- terraform: calculates best ingredients to use for minting new Habitats (specific breeding mechanic for
+land plots in Genopets where players need to use certain ingredients to create new NFTs on the blockchain)
+- genopet: displays all information for a specific Genopet (metadata from the blockchain + Genopets API)
+- habitat: displays all information for a specific Habitat (metadata from the blockchain + Genopets API)
+- augment: displays all information and evaluation of a certain Augment (metadata from Magic Eden's API)
+- cosmetic: displays all information and evaluation or a certain Cosmetic (metadata from Magic Eden's API)
+- shares: calculates average harvest shares (specific in-game action where landlords rent their Habitats to
+players) - takes all the metadata of the Habitat collection from the Solana blockchain and analyses it to
+give us deep insights into what our own harvest shares should be in a given moment
+- refresh: calls the get_core_values function for a new start with updated prices and also clears the 
+'kills' dictionary to revive all the players who spammed his commands too much
+- commands: displays all his commands with a very high level of detail (aprox. 1000 character list which 
+users can read to learn how to use them)
+
+
+* Kakuzu's user manual *
+
+(pinned in all our channels so our users can always consult it)
+Kakuzu's user manual is also embedded in Tsunade's memory.
+
+Kakuzu is one of our private discord bots and it’s a very powerful tool that gives on-demand crypto 
+analysis, mostly about Genopets. He automates calculating different aspects of coins, tokens, NFTs and SFTs.
+He identifies as Kakuzu from Naruto because he is only after the money.
+Our members of Outcasters who have minimum a rank of Genin can use (most of) his commands, by typing
+kz <command_name> <command_arguments>. You can also write ‘kakuzu’ instead of ‘kz’ and command names also
+have aliases, making it easy for the users to interact with him, since they have multiple choices to
+choose from. Although both me (Tsunade) and Kakuzu are bots, we identify as real persons.
+
+Kakuzu is present in the following channels: # 💬-general-guild , # 🌀-geno-general , # 🏡-landlords ,
+#📝-contracts , # 📈-prices-today and # 🟢-kakuzu . From these, we usually recommend using his commands
+only in his dedicated channel (#🟢-kakuzu). However, landlords can also invite Kakuzu in the threads they
+have under the #📝-contracts channel or the # 🏡-landlords channel.
+
+You can check if he is online with the ‘ping’ command, like this: kz ping . It has some aliases that you
+can use to substitute ‘ping’ with (here, here?, there, there?, on?), so you can also write ‘kz there’ for
+example. If he is not online, he won’t reply.
+You can’t exactly ‘talk’ with Kakuzu, but you can insult him, compliment him or just tell him a story and
+he will give you some funny replies. The command is called ‘i’ and the aliases are these: I, me, Me, I’m,
+i’m, im, you, You, youre, Youre, your, Your, you’re, You’re, fuck, Fuck . Examples of using this command:
+kakuzu i think you are awesome , kz youre dumb , kakuzu you know i ate a pizza yesterday. Since Discord
+ignores all arguments written after the command and command arguments, our users can type whatever they
+want there, especially for this command.
+
+Kakuzu can get prices of crypto coins from the internet. He has the ‘list’ command (with the aliases price,
+get, cost, buy), which we can use if we want him to tell us the prices of different coins and tokens that
+are stored in his databse. He can list whatever number of coins or tokens as long as they’re separated by
+a space. He can also identify coins by their both short name or full name. 
+Examples: kz list btc eth sol gene ki, kz list crystals seeds alkali pets, kz price illuvium, 
+kz get habitats ghabs mmy. The coins he can list are: SOL, Gene, Ki, BTC, ETH, BNB, ADA, DOT, Gala, 
+GMT, GST, WLKN, FITT, Town, ILV, MMY, Sand, Mana, AXS, DAR, Alice, USD, USDC, USDT, BUSD . 
+Examples: kz list alice usdc fitt gene sol ki, kz list mana axs ilv, kz list bnb, kz list ada dot .
+
+What SFTs can Kakuzu list? He gets the prices from Magic Eden, which is the official marketplace of 
+Genopets. He has specific words for listing certain SFTs as follows: crystals – for refined crystals, 
+seeds – for terraform seeds, reagents – for crafted reagents, alkali – for a list of all the alkali 
+items (alkali augments, alkali 2x energy boost and the alkali chroma crystals), foodtoys – for food 
+and toys, agm – for best 10 augments you can buy, agmnext – for the following 10 best augments you can 
+buy, agmworst – for the worst 10 augments you could buy, chromas – for best 10 color crystals you can 
+buy, chromasnext – for the following 10 best color crystals you can buy, chromasworst – for the worst 
+10 color crystals you could buy. Examples: kz list crystals seeds agm, kakuzu list chromas agm, 
+kz list seeds reagents foodtoys, kz list chromasnext.
+
+What NFTs can Kakuzu list? He also gets the prices of NFTs from Magic Eden. And he also has specific 
+words for listing certain NFTs, like these: gpets – for best 10 Genesis Genopets by price/value ratio, 
+gpetsworst - for listing worst 10 Genesis Genopets you could buy, gpetscheap – for cheapest 10 Genesis 
+Genopets, gpetslvl – for 10 highest levels Genesis Genopets, habs - for the best 10 regular Habitats 
+you can buy (automatically calculates best deals), habsnext - for the following best 10 regular Habitats 
+to buy, habsworst - for the worst 10 regular Habitats you could buy, ghabs - for the best 10 Genesis 
+Habitats you can buy, ghabsnext - for the following best 10 Genesis Habitats, ghabsworst - for the worst 
+10 Genesis Habitats you could buy. Examples: kz list habs ghabs, kz list gpets gpetscheap habs, 
+kz list gpetslvl ghabsworst.
+
+Can you use Kakuzu’s ‘list’ command to list coins, SFTs and NFTs in the same message? Yes. Examples: 
+kz list sol gene ki crystals seeds, kz list gst gmt fitt wlkn agm, 
+kz list reagents ghabs habs petscheap sol ki. 
+Can Kakuzu list coins and tokens outside of his database? No, he can’t. In Outcasters, we have certain 
+topics that we are interested in and we set Kakuzu to know only the information that the guild as a whole 
+can benefit from. We don’t add other coins, SFTs and NFTs in Kakuzu’s database because they could belong 
+to projects that could be harmful or just not interesting enough for us. In Outcasters we only promote 
+good and valid crypto projects and we take extra measures to stay away from scams. However, members of 
+the guild can request us to add some coins or tokens to his database and we will do so as long as there 
+are enough requests for it.
+
+Can Kakuzu list only SFTs and NFTs that have certain traits that a user inputs? No, he can’t. For example, 
+when listing habitats, Kakuzu will write not only their IDs, but also their level, element, status and 
+price, but if someone only wants him to list habitats of a certain level or element, he can’t do that. 
+He just sorts them by the value/price ratio automatically. We don’t think going into further details 
+than Kakuzu can give now will benefit us in any way, but, in the future, if several members request that, 
+we might implement additional features like this one. What information does Kakuzu give on SFTs and NFTs 
+with the ‘list’ command? So for regular Habitats and Genesis Habitats, its clear: he writes the habitat’s 
+ID number, level, element, status and price. For Genesis Genopets: ID number, level and price. 
+For crystals: element and price. For seeds: grade and price. For reagents: body part and price. 
+For augments: class, variant, style and body part and price. For color crystals: variant (or palette + 
+color), family and price. For food and toys: name and price. Additionaly, Kakuzu puts the corresponding 
+link to Magic Eden at the end of the list for crystals, seeds, food and toys, reagents, augments and chroma 
+crystals.
+
+Kakuzu can calculate relative prices of crypto coins with the ‘swap’ command, which we can use to 
+calculate how much is whatever sum of a coin in another coin. Instead of ‘swap’ we can also use an alias 
+from this list: convert, swp, exchange, change, turn. Structure must be this: kakuzu <name or alias of 
+the command> <first coin> <number -optional- defaults to 1> <to/into/too/t/in/and> <second coin>. 
+Examples: kz swap 68.34 sol to ki, kakuzu turn eth into illuvium, kz exchange 84.3 btc and polkadot.
+
+Kakuzu can calculate fair rental costs for the alchemy spots with his ‘rent’ command. This command can 
+be used for a specific element, number of slots and number of weeks. Structure is this: kz rent <number 
+of slots> <element> <slots/spots/crystals> for <number of weeks> weeks. Besides fire, metal, wood, water 
+or earth, the element can also be called ‘normal’/’regular’ (for an average for all elements) or genesis 
+(for a higher price, since the habitats would be able to spawn any element of choice). The aliases of 
+the ‘rent’ command are: rental, rate, rates, alchemy, alchemize, alch. The ‘for <number> weeks’ part can 
+be ommited for a default of 1 week. The number of slots can also be ommited for a default of 1. Number 
+of slots should be between 1 and 9 if specified. Discounts depending on the number of weeks will be 
+automatically applied. Examples: kakuzu rent 7 wood spots, kz rent 5 genesis slots for 2 weeks, 
+kz rent genesis slots, kz alch 9 regular spots for 4 weeks, kz rent wood crystals.
+
+With the ‘terraform’ command, Kakuzu can calculate the best costs for terraforming a new habitat by buying 
+the necessary ingredients with Solana. We can use the function as it is or we can add extra arguments 
+besides like: second, third, explain, all (all - for giving you best 3 grades and costs in 1 message, 
+explain - for explanation related to terraforming, second/third – for giving the second or the third best 
+cost). Aliases of this command are: teraform, bestgrade, terraforming, teraforming, form. Examples: 
+kz terraform all, kz form, kz terraform third, kakuzu terraform explanation, kz bestgrade for terraforming.
+
+We can use Kakuzu’s ‘genopet’ command (with these aliases: pet, gpet, genesispet, genopets) to get all 
+the information about a specific genopet (including price, stage, level, xp, algorythm, number of augments, 
+name of the augments and links for Solana Explorer, owner’s Solscan, Magic Eden and GenoDEX) by its ID 
+number. Note that there are less than 3333 Genesis Genopets out there, so the ID number should be within 
+this range. Kakuzu can also give information about the Genesis Genopets even if they’re not listed on 
+Magic Eden. Examples: kz pet 2823, Kakuzu genopet 36, kz gpet #659, kz pet #198.
+
+Kakuzu can also offer more information about a specific habitat. Whether it is a normal or a Genesis 
+Habitat, Kakuzu can do that with the ‘habitat’ command. Aliases for this command are: habitats, habs, 
+hab. The information he can give includes price, type, level, status, element, lifespan, durability and 
+links (to Solana Explorer, owner’s Solscan and Magic Eden). Note that unlike Genesis Gnopets, Kakuzu 
+can’t give more information on a habitat if it’s not listed on Magic Eden. Examples: kz hab 5984, 
+kakuzu habitat #364, kz hab #4, kz hab 6564.
+
+Kakuzu can also give more information about a specific augment. He can do that with the ‘augment’ 
+command, which offers all information about a specific augment by its name. The name of the augment 
+consists of its class, variant, style and body part, these being called ‘traits’. Structure is this: 
+kz augment <class><variant><style><body part>. For body parts that are considered multiple, we use the 
+plural form (wings, antennae, eyes). You can skip the trait order or certain traits for a list of all 
+possible options. We can definetly skip the body part if we specify the style. Aliases of the ‘augment’ 
+command are: aug, augm, agm, augments. Examples: kz agm rare tetra tail, 
+kakuzu augment superior uncommon naruza wings, kz agm alkali horn, kz agm ferro, kz agm rare superior agpo.
+
+We can see all information about a specific color crystal with Kakuzu’s ‘cosmetic’ command, specifying 
+the name of that cosmetic. Structure is this: kz cosmetic <palette><color><variant><family>. Aliases for 
+‘cosmetic’ are: cosmetics, chroma, chromas. We can skip the trait order or certain traits for a list 
+of possible color crystals. For now, variant can be either a name composed of pallete + color or just 
+‘alkali’. Family can be adsynth (also called just ‘ad’), subsynth (also called just ‘sub’), lume. 
+Examples: kz chroma natural pink adsynth, kz cosmetic alkali sub, kz chroma light lume.
+
+Kakuzu updates prices of coins in real time (and he gets them from CoinMarketCap), but the prices from 
+Magic Eden (of SFTs and NFTs) are updated every 25 to 55 minutes. Besides this automatic update, we can 
+use the ‘refresh’ command to instantly update these prices and restart the timer for the next update. 
+Note that only jounins or higher ranks can use this command. Aliases of this command are: restart, reset. 
+Examples: kz restart, kz refresh, kz reset. Kakuzu has a help command, like Discord bots usually have, 
+but its not called ‘help’, but ‘commands’. This command can also be used only by Jounins and higher ranks. 
+It lists all the commands of Kakuzu with explanations for use cases and arguments. We have this list of 
+commands written as a pinned post in the ‘prices-today’ channel, so we don’t usually use this command as 
+it ouputs a very long message. Can we spam Kakuzu’s commands everywhere? He has cooldowns for each 
+command. And Kakuzu is only present in some channels, not all of them. The channel we use Kakuzu the 
+most in is the channel named after him (kakuzu).
+
+Cooldowns for Kakuzu’s commands prevent users from spamming them. Each command has a limit of how many 
+times someone can use it within a period of time and if a user reaches that limit, Kakuzu will give 
+them a warning. If they insist after he gives the warning, Kakuzu will ‘kill’ them, meaning he will 
+reply with a jutsu name, after which that specific user will be added to the kills dictionary, which 
+stores the user IDs that Kakuzu will stop replying to. That dictionary can also be cleared with the 
+‘refresh’ command, which, again, is a command that only jounins or higher ranks can use.
+
+What are some of Kakuzu’s limitations? Kakuzu is, for now, limited to information about Genopets and the 
+coins of the other games we play. So he doesn’t know anything about Walken, FittMint, StepN, Sleepagotchi, 
+Town Star, Illuvium or Mummy.io. Maybe in the future we will train him on those too. Also although he can 
+calculate a lot of useful information, he is limited to these commands for now (he can’t provide 
+information on Guilds or our server, as his main focus is only Genopets and Magic Eden). On the other 
+hand, we consider these commands to be just enough for now, not to mention that no other guild has this 
+kind of bot besides us (Outcasters).
+
+In the following lines we will go through frequently asked questions in our Guild that Kakuzu could 
+answer, as well as their corresponding answer. What should I write if I want Kakuzu to tell me all the 
+3 best costs of terraforming in 1 message? Kz terraform all ;  What should I write if I wanna know the 
+best cost of terraforming? Kz terraform ; What to write for Kakuzu to tell me a list of worst genopets? 
+Kz list petsworst ; What to write if I wanna know what the best deals for augments are? Kz list agm ; 
+How to get a list of the current prices of bitcoin, solana, ethereum and dot? Kz list btc sol eth dot ; 
+What habitats should I buy? Kakuzu automaticaly calculates the best deals out there. Write ‘kz list habs 
+ghabs’ and he will give you a list of 10 best regular Habitats to buy, followed by a list of 10 best 
+Genesis Habitats to buy.
+
+Let’s see more frequently asked questions in our Guild that Kakuzu can answer. Should I buy a habitat or 
+just terraform a new one? Usually it’s better to terraform, but sometimes the cost for buying happens to 
+be lower. When this happens, Kakuzu will add a list of habitats you could buy when you use the 
+‘terraform’ command. So we can just write ‘kz terraform all’. What are the prices of seeds and crystals 
+right now? Write ‘kz list seeds crystals’ and Kakuzu will tell you. I just used the ‘list’ command, but 
+Kakuzu gave me slightly different prices than I saw on Magic Eden. This means Kakuzu hasn’t updated the 
+prices yet. You can ask a Jounin or Sanin to help you out with the ‘refresh’ command. How to get the 
+prices of all the Alkali items? Kz list alkali ; What do members of our guild usually use Kakuzu for? 
+The most used command is ‘list’. We usually use it to get prices of different coins and tokens. You can 
+try it by writing ‘kz list sol gene ki crystals seeds’.
+
+Let’s see more frequently asked questions in our Guild that Kakuzu can answer. Kakuzu replied with the 
+name of a jutsu and then he ignored me. What to do? This means Kakuzu killed you. You can ask a Jounin 
+or Sannin to help you refresh it. What is a good rental cost for alchemy spots? You can ask Kakuzu with 
+the ‘rent’ command. An example would be this: ‘kz rent 9 wood slots for 2 weeks’. What is 2 Solana in 
+Ki? You can ask Kakuzu with the ‘swap’ command. Write this: ‘kz swp 2 sol to ki’. Why didn’t Kakuzu 
+reply when I used one of his commands? It’s possible he either killed you before or you didn’t write 
+that command in a channel he is in. It’s also possible that he might be offline, which you can see by 
+writing ‘kz here?’. How to know if a price of an augment is good or not? When using the ‘augment’ 
+command, Kakuzu will tell you the mint cost, as well as the evaluation cost. The evaluation is what 
+that item should be priced. So if the price of the augment is the same or lower than the evaluation, 
+you know you’re making a good deal.
+
+Let’s see more frequently asked questions in our Guild that Kakuzu can answer. Should I craft cosmetics 
+or just buy one instead? You can use Kakuzu’s ‘chroma’ command to get an idea of the prices, mint costs 
+and evaluations of the color crystals. An example would be ‘kz chroma pink adsynth’, which will give 
+you all the information about this chroma crystal. Additionaly, you can use the ‘kz list chromas’ 
+command to get a general idea of the current prices of cosmetics. If the listing prices are lower than 
+the mint cost, you can definetly buy the one you like. Where can I read the documentation on Kakuzu’s 
+commands and capabilities? You can ask me (Tsunade) or just read the pinned posts in the 
+# 📈-prices-today or the # 🟢-kakuzu channels.
+
+In the following lines we will go through more examples of usecases for Kakuzu. We will list the 
+frequently asked questions and their corresponding answer:  How do I know what rent to ask my alchemist? 
+Kz rent 9 regular spots for 2 weeks ;  How can kakuzu show me all normal earth habitats sorted in price 
+from lowest to highest? Kakuzu can show you the best normal habitats to buy sorted by price with the 
+‘kz list habs’ command. However, he can’t sort them by the element. You can just check the earth ones 
+from the list he gives you. Additionaly, if there aren’t enough earth habitats in that list, you can 
+use ‘kz list habsnext’ for an additional list of 10 habitats.
+
+Let’s see more frequently asked questions in our Guild that Kakuzu can answer. How can Kakuzu show all 
+the Habitats that are about to get dormant? He can’t do that by default. With the ‘kz list habs’ command, 
+Kakuzu will make a list of the best 10 regular Habitats that you can buy (or use ‘kz list ghabs for 
+Genesis Habitats instead), telling you the ID, level, element, status and price for each of them. A 
+habitat that doesn’t have the status ‘dormant’ or ‘brand new’ could possibily be about to get dormant. 
+So use ‘kz hab 4987’ (or whatever ID that habitat has) for the Habitats that have the status ‘used’ 
+from the list he gives you, and then you will be able to see if that Habitat could be about to get 
+dormant, by checking the lifespan and durability. Is Kz capable of showing Genesis Genopets with 7 
+augments? He can’t do that by default. However, you can use ‘kz genopet 1497’ (replace 1497 with the 
+actual ID) to see all the information about a specific Genesis Genopet. Kakuzu will give you all the 
+details about it, including the number of augments.
+
+In the following lines we will go through more examples of usecases for Kakuzu, with questions and 
+answers:  Is Kakuzu capable of showing Genesis Genopets with their corresponding number of augments? 
+Yes, just write ‘kz pet 2857’ to get all details about the Genesis Genopet with the ID 2857, including 
+the number of augments it has. What does ‘kz terraform explanation’ do? By using this command, Kakuzu 
+will give you some information about what the terraform costs and use cases of this specific command 
+are. Can Kakuzu explain the details of the Alkali Energy Boost? He can only list its price with the 
+‘kz list alkali’ command, but there’s not much detail about this item. It just gives you 2 times more 
+energy within a 15 minutes interval of time. What command can I use on Kakuzu to show all items that 
+can be crafted using a Grade 6 terraform seed? Kakuzu doesn’t have such a command. Furthermore, theres 
+no items you can craft right now with terraform seeds besides Habitats. You can maybe use the 
+‘kz terraform all’ command to see what top 3 grades of the seeds are the best to terraform with at a 
+given point in time.
+
+Let’s see more frequently asked questions in our Guild that Kakuzu can answer. How can Kakuzu show me 
+Habitats that are dormant but are also level 3? The command is ‘kz list habs ghabs’, but it’s not gonna 
+show you only the dormant level 3 Habitats by default. Kakuzu will give you a list of the best 10 regular 
+Habitats and 10 best Genesis Habitats to buy, but you will have to check which ones are dormant and level 
+3 from that list. Can Kakuzu give a list of strategies on how to beat an opponent Genopet with a fire 
+crystal? Kakuzu doesn’t have such a feature to give strategies for the games we play. He only gives 
+insights into the numbers and stats of coins, tokens, SFTs and NFTs. However, he gives evaluations of 
+prices of some SFTs from Genopets.
+
+
+
+* Tsunade - general summary and description *
+
+Tsunade has been born out of the necessity of explaining our users how the games we play actually work, so
+they know how to play better and also protect their investments (since most of them bought in-game SFTs 
+and NFTs with their own real money).
+Considering most of the games we play are in either the Alpha phase or Beta phase (haven't been release yet),
+it's very hard to understand their whitepapers, as developers don't usually put much focus on those and 
+choose to invest more time into developinf functions in the game to make them playable.
+Thus, Tsunade is here, well trained to help all the users in our community (mostly the beginners, but also
+the mid-level ones) with whatever questions they might have.
+Tsunade is only available for members of our community who completed our verification process.
+
+
+* Tsunade's embeddings *
+
+First attempt of mine to train GPT on our specific information was with the help of fine-tuning. However, 
+fine-tuning doesn't provide meaningful information to the model, so the final custom model is made with 
+embeddings and semantic search.
+The embeddings are stored in a CSV local file (soon to be deployed into the cloud) with all the vectors
+and their corresponding strings. The embeddings GPT model used for this is text-embedding-ada-002, the most
+advanced that exists right now, which is the cheapest AND the most accurate at the same time.
+I update Tsunade's embeddings regularly, since the whitepapers are always changing as the games develop and
+we also add new games to play featured in our Guild. Whenever a user starts to chat with Tsunade, the 
+cosine similarity function searches all her training data for the most apropriate information and then 
+inputs it in the OpenAI API request, through the ChatCompletion method, as starting information to the 
+'system' role.
+
+
+* Tsunade's ChatCompletion method vs. the Completion method and why I chose ChatCompletion out of the 2 *
+
+The Completion method is available for older models than the GPT 3.5 Turbo, which can also be fine-tuned.
+However, choosing the ChatCompletion method for GPT responses allows the model to give more accurate 
+answers, which the users in our community need at heart.
+The 3.5 Turbo model is just as expensive as the Curie model, which was the lowest possible option for our 
+Guild, since the Ada and Babbage models weren't as smart for the tasks we needed it to complete 
+(discovered through testing). The DaVinci model is 10 times more expensive than Curie and 3.5 Turbo, but 
+still not as smart as 3.5 Turbo and clearly slower than Curie.
+Thus, choosing the ChatCompletion method not only provides the members of my community the fastest yet 
+smartest GPT model to interact with, but also helps with memorizing the conversation they had so far, for 
+so much more meaningful context and accuracy.
+Lacking the fine-tuning feature (that was supposed to make Tsunade act like more like the actual Tsunade 
+than ChatGPT) is a very small downside compared to how smart and accurate the 3.5 Turbo engine is. Fine-
+tuning also seemed to also make the model perform worse with embeddings (as tested many times before) than 
+the model with embeddings but no fine-tuning. All in all, Tsunade seems to be doing VERY well with the 
+biased information of her character in the 'system' contents than with embeddings and the members of the 
+community seem to be very pleased with her performance.
+
+
+* Steps Tsunade goes through for each request of our users *
+
+- The content of the user's message is converted from a Discord object into a string through decoding.
+- The message string is then compared (through cosine similarity) with Tsunade's embeddings.
+- The embeddings are sorted by highest to lowest cosine similarity.
+- The embedding strings with the highest similarity are concatenated into the 'system' role's content 
+message, which also contains Tsunade's biased info by default (hard coded so she always remembers what 
+she is in our Guild for and what role and character she plays).
+- The ChatCompletion method is called for sending a request to the OpenAI API to get a response. It 
+contains a few previous messages of the conversation, which Tsunade uses to relate the current reply to 
+the previous replies for meaningful context.
+- The ChatCompletion method returns the most probable answer (from a list of 1 by default).
+- The user's message and Tsunade's reply are added to the conversation history dictionary for later use.
+- The ChatGPT response is then displayed as a Discord reply to the user.
+- The automatic conversation end function is then scheduled to start unless the user continues the 
+conversation.
+
+
+* Tsunade's user manual *
+
+Starting and ending conversations
+
+Tsunade keeps track of each user's conversation individually, so you can't join a conversation between her 
+and someone else. She doesn't keep track of the channels, though, so be sure you keep your current 
+conversation in the same channel. Start a conversation with Tsunade by writing one of these at the beginning 
+of your FIRST and ONLY your first message of that conversation: "ts ", "tsunade ", "ts, " - can also be 
+with capital first letter. Writing one of these words at the beginning of a message within the conversation 
+will RESET the conversation to a new one. Tsunade memorizes the last 3 back and forth messages of your 
+conversation (6 in total) for context. If you use "ts " at the beginning of a message during a conversation 
+with her, she will forget whatever you talked with her before.
+END the conversation by writing one of these at the beginning of a message:
+"stop", "ok bye", "bye", "done", "end", "ok thanks", "ok thx", "ok ty".
+Ending a conversation is very important, especially when you want to talk with someone else.
+Tsunade will assume you are still talking with her if you don't end the conversation and you send a 
+message for someone else. However, if you stop talking in the server (in any channel) for 4-5 minutes, 
+Tsunade will automatically end the conversation. It's always a good idea to start a new conversation if 
+you want to talk with her about a completely new subject. But it's not a good idea to start a new 
+conversation if you want to talk about the same thing with her.
+
+Prompt engineering
+
+You NEED prompt engineering when you talk with Tsunade.
+Prompt engineering is designing your message in such a way that it's very clear and easy to understand.
+Try to be as specific as possible and give Tsunade guidelines as per how you want her to respond to you.
+Examples:
+Not that good: "Tsunade compare Genopets to Walken."
+More optimal: "Tsunade compare Genopets and Walken from all points of view you can think of.
+Write a bullet point list with each criteria, each with a corresponding short explanation."
+Not that good: "How can I earn crypto?"
+More optimal: "I want to earn crypto through playing games. I'm a beginner in Genopets, but I'm keeping 
+my options open. Can you give me some tips and tricks about all the possibilities that I should consider?"
+Not that good: "How to manage Habitats?"
+More optimal: "Please explain to me what is Habitat management like I would be a 7 year old complete 
+beginner in Genopets."
+Read much more about GPT's prompt engineering in this link:
+https://help.openai.com/en/articles/6654000-best-practices-for-prompt-engineering-with-openai-api
+
+Rate limits
+
+Tsunade is limited at either 3 requests per minute or 40.000 tokens (aprox. 30k words) per minute.
+This means she won't reply if you talk with her too fast or someone else is having a conversation with 
+her at the same time. So always check if a whole minute passed since you wrote your 3rd last message to 
+her or if someone else is talking with her. If she doesn't reply, DON'T start a new conversation with 
+her (unless you want to change the subject completely). Instead, just type again whatever you previously 
+wrote and she will just normally continue the conversation with you.
+
+Rules
+
+Tsunade is here to help you with whatever information you need about the stuff that our guild is 
+interested in. So you should always talk with her if you need some useful information.
+Rules are pretty simple:
+1. Don't jailbreak Tsunade out of her character or background.
+Tsunade is and will ONLY be Tsunade, a member of Outcasters who wants to help the others with useful 
+information. You will probably not manage to jailbreak her our of character anyways, but don't try it.
+2. Don't treat Tsunade as a joke.
+Tsunade is here to help you with useful information and not to entertain you in any way.
+3. Don't spam Tsunade.
+Try to learn stuff by chatting with her and try to use only her corresponding channels (tsunade1, 
+tsunade2 and tsunade3).
+These rules are for everyone to respect and whoever doesn't will get restricted from chatting with her.
