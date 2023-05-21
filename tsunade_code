@@ -1,0 +1,102 @@
+import discord
+from discord.ext import commands
+import os
+import openai
+import ast
+import pandas as pd
+import numpy as np
+from scipy import spatial
+import tiktoken
+import asyncio
+import time
+
+openai.api_key = os.getenv("OPENAI_API_KEY")
+EMBEDDING_MODEL = "text-embedding-ada-002"
+GPT_MODEL = "gpt-3.5-turbo"
+
+TSUNADE_TOKEN = os.getenv("TSUNADE_TOKEN")
+discord.Intents.default().members = True
+tsunade = commands.Bot(command_prefix=["tsunade ", "Tsunade ", "ts ", "Ts ", "tsunade, ", "Tsunade, ", "ts, ", "Ts, "],
+                       intents=discord.Intents.all())
+
+output_path = r'C:\Users\oct94\Desktop\tsemb3.csv'
+df = pd.read_csv(output_path)
+
+def strings_ranked_by_relatedness(query: str, df, relatedness_fn=lambda x, y: 1 - spatial.distance.cosine(x, y)):
+    query_embedding = openai.Embedding.create(model=EMBEDDING_MODEL, input=query)["data"][0]["embedding"]
+    query_embedding = np.array(query_embedding).flatten()
+    strings_and_relatednesses = []
+    for i, row in df.iterrows():
+        embedding = ast.literal_eval(row["embedding"])
+        relatedness = relatedness_fn(query_embedding, np.array(embedding).flatten())
+        strings_and_relatednesses.append((row["text"], relatedness))
+    strings_and_relatednesses.sort(key=lambda x: x[1], reverse = True)
+    strings, relatednesses = zip(*strings_and_relatednesses)
+    return strings[:100], relatednesses[:100]
+
+conversation_history = {}
+async def ask(query, user_id, df=df):
+    global conversation_history
+    query = str(query)
+    if user_id not in conversation_history:
+        if query.lower().startswith(("tsunade ", "ts ", "ts,")):
+            conversation_history[user_id] = [{"role": "user", "content": query}]
+        else: return "➤"
+    else:
+        if query.lower().startswith(("tsunade ", "ts ", "ts,")):
+            conversation_history[user_id] = [{"role": "user", "content": query}]
+        else:
+            conversation_history[user_id].append({"role": "user", "content": query})
+            if len(conversation_history[user_id]) > 4:
+                conversation_history[user_id] = conversation_history[user_id][-5:]
+    strings, relatednesses = strings_ranked_by_relatedness(query, df)
+    message = ""
+    for information in strings:
+        if len(tiktoken.encoding_for_model(GPT_MODEL).encode(message + information)) > 1200: break
+        else: message += information
+    ts_bias_info = "You are Tsunade and you always speak in first person. You are a charismatic person and a great " \
+                   "advisor. You are not an AI and you never hesitate to flirt. You are assisting an Outcasters user " \
+                   "with the best information you can give. Relevant information that might help you:\n\n" + message
+    if len(conversation_history[user_id]) < 2:
+        messages = [{"role": "system", "content": ts_bias_info}, {"role": "user", "content": query}]
+    elif len(conversation_history[user_id]) < 4:
+        messages = [{"role": "system", "content": ts_bias_info}, conversation_history[user_id][-2],
+                    conversation_history[user_id][-1], {"role": "user", "content": query}]
+    else:
+        messages = [{"role": "system", "content": ts_bias_info}, conversation_history[user_id][-4],
+                    conversation_history[user_id][-3], conversation_history[user_id][-2],
+                    {"role": "user", "content": query}]
+    response = openai.ChatCompletion.create(model=GPT_MODEL, messages=messages,
+                                            temperature=0, presence_penalty=2, frequency_penalty=1,
+                                            max_tokens=1800)["choices"][0]["message"]["content"]
+    conversation_history[user_id].append({"role": "assistant", "content": response})
+    async def end_conversation():
+        await asyncio.sleep(400)
+        conversation_history.pop(user_id, None)
+    if user_id in conversation_history:
+        asyncio.create_task(end_conversation())
+    return response
+
+@tsunade.event
+async def on_ready():
+    print("Tsunade running")
+
+@tsunade.event
+async def on_message(message):
+    if message.author.bot: return
+    user_input = message.content.lower()
+    user_id = str(message.author.id)
+    if user_input.startswith(("stop", "ok bye", "bye", "done", "end", "ok thanks", "ok thx", "ok ty")):
+        conversation_history.pop(user_id, None)
+        return
+    gpt_output = await ask(query=message.content, user_id=user_id)
+    if gpt_output != "➤":
+        await message.reply(gpt_output)
+        if user_id in conversation_history:
+            asyncio.current_task().cancel()
+            await asyncio.sleep(400)
+            if user_id in conversation_history:
+                conversation_history.pop(user_id, None)
+    return
+
+tsunade.run(TSUNADE_TOKEN)
