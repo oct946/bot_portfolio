@@ -1,0 +1,1690 @@
+import discord
+from discord.ext import commands
+import requests
+from bs4 import BeautifulSoup as bs
+import undetected_chromedriver as uc
+import json
+import random
+import time
+import threading
+import os
+import pandas as pd
+
+cmc_dict = {"sol" : "solana", "gene" : "genopets", "geno" : "genopets", "sgene" : "genopets", "ki" : "genopets-ki",
+            "genopets ki" : "genopets-ki", "btc" : "bitcoin", "eth" : "ethereum", "ether": "ethereum", "bnb" : "bnb",
+            "binance" : "bnb", "ada" : "cardano", "dot" : "polkadot-new", "polkadot" : "polkadot-new",
+            "gala games" : "gala", "galagames" : "gala", "gmt" : "green-metaverse-token",
+            "stepn" : "green-metaverse-token", "gst" : "green-satoshi-token", "wlkn" : "walken", "fitt" : "fitmint",
+            "fit" : "fitmint", "town" : "town-star", "townstar" : "town-star", "ilv" : "illuvium", "silv" : "illuvium",
+            "iluvium": "illuvium", "mmy" : "mummy-finance", "mummy" : "mummy-finance", "mummyio" : "mummy-finance",
+            "mummy.io" : "mummy-finance", "vet" : "vechain", "sand" : "the-sandbox", "sandbox" : "the-sandbox",
+            "mana" : "decentraland", "axs" : "axie-infinity", "axie" : "axie-infinity", "dar" : "mines-of-dalarnia",
+            "dalarnia" : "mines-of-dalarnia", "mines of dalarnia" : "mines-of-dalarnia",
+            "minesofdalarnia" : "mines-of-dalarnia", "alice" : "myneighboralice", "walkn" : "walken",
+            "usdt" : "tether", "usd" : "tether", "usdc" : "usd-coin", "busd" : "binance-usd"}
+cmc_short = {"solana" : "SOL", "genopets" : "Gene/sGene", "genopets-ki" : "KI", "bitcoin" : "BTC", "ethereum" : "ETH",
+             "bnb" : "BNB", "cardano" : "ADA", "polkadot-new" : "DOT", "gala" : "Gala",
+             "green-metaverse-token" : "GMT", "green-satoshi-token" : "GST", "walken" : "WLKN", "fitmint" : "FITT",
+             "town-star" : "TOWN", "illuvium" : "ILV/sILV", "mummy-finance" : "MMY", "vechain" : "VET",
+             "the-sandbox" : "SAND", "decentraland" : "MANA", "axie-infinity" : "AXS", "mines-of-dalarnia" : "DAR",
+             "myneighboralice" : "Alice", "tether" : "USD", "usd-coin" : "USDC", "binance-usd" : "BUSD"}
+
+cmc_all = []
+for coin_name in cmc_dict:
+    cmc_all.append(coin_name)
+    cmc_all.append(cmc_dict[coin_name])
+
+what_qwords = ["what", "whats", "what's", "wat", "wats", "wat's"]
+ready_notices = ["I'm ready. ", "Give me the money! ", "I'm never offline. ", "Here. ", "I wasn't napping! ", "Yes. ",
+                 "Interested in business. "]
+not_understand = ["LMAO", "You're boring.", "I killed many Chinese people. Careful!", "lol",
+                  "You have a good sense of humour.", "I have 4 hearts. But none for you", "Just no.",
+                  "Another joke.", "Check if you wrote correctly.", "Not funny.", "wtf", "WTF",
+                  "Hippies can do that.", "xD", "You must be friends with Kakashi.", "I put pineapple on pizza, too.",
+                  "Type this: kakuzu rent <number of slots> <element> <slots> <whatever you want after>\n"
+                  "Example: kakuzu rent 8 genesis spots i wanna rent them for 4 weeks ideally"]
+possible_rent = ["Optimal", "Good:", "Try", "Do", "I would rent for", "Rent for", "Rent is", "Now it's",
+                 "Right now", "Now:", "", "", ""]
+processing = ["Calculating", "1 moment", "Sec", "Trying to think", "Thinking", "Consulting resources", "Wait",
+              "Let me calculate", "Putting my brains to work", "Let's see", "Processing"]
+love_words = ["Spoil me, daddy!", "I love your money.", "Kakashi is responsible for taking all my 4 hearts. Talk to him.",
+              "It's not fitting that I take your heart to replace the one you're trying to take!", "I love money.",
+              "Pay me.", "I like myself."]
+insults = ["I don't like you, either.", "I will sew your mouth with my threads, just like I do with Hiddan. "
+                                        "AHAARGHARGHAHRRRRGHHHAAAA", "You're useless.",
+           "If you can't pay, you're no good to me.", "I don't care about your goals or your beliefs. "
+                                                      "I only care about getting paid.",
+           "You're nothing but a weakling. Don't waste my time.",
+           "You're a fool if you think you can beat me.", "You talk too much. It's annoying.",
+           "You're not worth the dirt on my boots.", "AHAARGHARGHAHRRRRGHHHAAAA so funny.",
+           "Do you even have a rank in Outcasters?", "I like that you're angry. Easy to manipulate."]
+so_what = ["So what.", "Pay me to listen to you.", "Whatever.", "Ignored.", "I don't care."]
+ignores = ["Earth Grudge Fear: Final Attack - EARTH STYLE WALL JUTSU! 🏔️",
+           "Earth Style: BEDROCK COFFIN! ⚰️", "Earth Style: EARTH SPEAR - MARK! 🪒", "Fire Style: FIREBALL JUTSU! 🔥",
+           "Wind Style: PRESSURE DAMAGE - UNLEASH! 🌬️", "Water Style: WATER SHARK BOMB JUTSU - UNLEASH! 🦈",
+           "Lightning Style: FALSE DARKNESS! 🌠", "Wind Style: DRILLING AIR BULLET - TARGET! ❧",
+           "Lightning Style: THUNDERBOLT - UNLEASH! ⚡", "Fire Style: Final Attack - BURNING ASH! ⚱️",
+           "Water Style: WATER DRAGON BULLET JUTSU! 🌊", "Shadow Sewing Technique: IMMOBILIZE! 💫"]
+warnings_quotes = ["😡 That's ALL you get!", "😡 You're getting on my NERVES, kid.",
+                   "😡 Give me a BREAK!", "😡 Don't push me, KID!", "😡 I will be happy to ADD the 5th mask to my collection!",
+                   "😡 Only Hiddan is as ANNOYING as you.", "😡 DON'T make me regret being patient with you.",
+                   "😡 Ok, now STOP or I'll make you regret it."]
+
+KAKUZU_TOKEN = os.getenv("KAKUZU_TOKEN")
+discord.Intents.default().members = True
+kakuzu = commands.Bot(command_prefix=["kakuzu ", "Kakuzu ", "kz ", "Kz ", "kakuzu, ", "Kakuzu, ", "kz, ", "Kz, "],
+                      intents=discord.Intents.all())
+
+kills = []
+cooldowns = {}
+def check_if_oncooldown(cooldowns: dict, command_name: str, cooldown_seconds_channel: float,
+                        cooldown_seconds_user: float, channel_id: int, user_id: int):
+    current_time = time.time()
+
+    if channel_id not in cooldowns:
+        cooldowns[channel_id] = {}
+    if command_name not in cooldowns[channel_id]:
+        cooldowns[channel_id][command_name] = {"time": current_time, "count": -1, "users": {}}
+    if user_id not in cooldowns[channel_id][command_name]["users"]:
+        cooldowns[channel_id][command_name]["users"][user_id] = {"time": current_time, "count": -1}
+
+    last_usage_in_channel = cooldowns[channel_id][command_name]
+    last_usage_in_channel_by_user = cooldowns[channel_id][command_name]["users"][user_id]
+
+    if current_time - last_usage_in_channel.get('time', 0) > cooldown_seconds_channel:
+        cooldowns[channel_id][command_name]['time'] = current_time
+        cooldowns[channel_id][command_name]['count'] = -1
+    cooldowns[channel_id][command_name]['count'] += 1
+
+    if current_time - last_usage_in_channel_by_user.get('time', 0) > cooldown_seconds_user:
+        cooldowns[channel_id][command_name]["users"][user_id]['time'] = current_time
+        cooldowns[channel_id][command_name]["users"][user_id]['count'] = -1
+    cooldowns[channel_id][command_name]["users"][user_id]['count'] += 1
+
+def get_geno_coins(url_part):
+    response = requests.get("https://crypto.com/price/" + url_part)
+    soup = bs(response.content, "html.parser").find("span", {"class": ["chakra-text", "css-13hqrwd"]})
+    price = float(soup.text.replace("$",  "").replace(",", "").replace(" USD", ""))
+    return price
+
+def get_crystals(driver):
+    driver.get("https://api-mainnet.magiceden.io/sft/collection/genopets_genotype_crystals")
+    r_crystals = driver.page_source.replace('<html><head><meta name="color-scheme" content="light dark"></head>'
+                                            '<body><pre style="word-wrap: break-word; white-space: pre-wrap;">', '') \
+        .replace('</pre></body></html>', '')
+    global earth, fire, metal, water, wood, crystal_prices
+    crystal_prices = [float(item["marketStats"]["lowestAskUi"]) for item in json.loads(r_crystals)][:5]
+    earth, fire, metal, water, wood = crystal_prices
+
+def get_seeds(driver):
+    driver.get("https://api-mainnet.magiceden.io/sft/collection/genopets_terraform_seeds_sft")
+    r_seeds = driver.page_source.replace('<html><head><meta name="color-scheme" content="light dark"></head><body>'
+                                         '<pre style="word-wrap: break-word; white-space: pre-wrap;">', '')\
+        .replace('</pre></body></html>', '')
+    global grade1, grade2, grade3, grade4, grade5, grade6, seed_prices
+    grade4 = float(json.loads(r_seeds)[0]["marketStats"]["lowestAskUi"])
+    grade6 = float(json.loads(r_seeds)[1]["marketStats"]["lowestAskUi"])
+    grade5 = float(json.loads(r_seeds)[2]["marketStats"]["lowestAskUi"])
+    grade2 = float(json.loads(r_seeds)[3]["marketStats"]["lowestAskUi"])
+    grade3 = float(json.loads(r_seeds)[4]["marketStats"]["lowestAskUi"])
+    grade1 = float(json.loads(r_seeds)[5]["marketStats"]["lowestAskUi"])
+    seed_prices = grade1, grade2, grade3, grade4, grade5, grade6
+
+def get_alkali(driver):
+    selector = "#marketStats_0 > div > div.stat-row.price > div:nth-child(2) > div.stat-value"
+    url_parts = ["69dv2moCqSb3NSGCns2TSzEGvsR3B7MVtXnxbrYDdvMn", "3XpYWEGqbZcVyzKbxjNAttCa6q3aDKtdEpp1HgjkiCTj",
+                 "Dv4pZKo5ztnmpuRr6vL6E22ksHmC8qUfoSfVTntRgVdd", "F82zUj5dhnyyQy8WH8HMBGUhnebYC3JYDDw3Cxgh7yHC",
+                 "3ndRLNs3p4MZLtFPg8wciuvA2EoqT2zTNWSHtM7ZMNph", "3n6TZFwLY9ECYtos2XbkfVbBfBScYpmRQB42YSo8v9Pk",
+                 "BzQk69NDdwr8XofoViMz6YuhQZXbhVynYSNp6NtwYJSi", "6qm6wWWSrQ3839zummQ7QWKo54jbNLk5cvQNB9swYrzY"]
+    global  alkali
+    alkali = []
+    for part in url_parts:
+        driver.get("https://api-mainnet.magiceden.io/sft/markets/" + part)
+        r = driver.page_source.replace('<html><head><meta name="color-scheme" content="light dark"></head><body>'
+                                       '<pre style="word-wrap: break-word; white-space: '
+                                       'pre-wrap;">', '').replace('</pre></body></html>', '')
+        alkali.append(float(json.loads(r)["marketStats"]["lowestAskUi"]))
+    alkali_ear, alkali_tail, alkali_wings, alkali_horn, alkali_boost, alkali_abs, alkali_subs, alkali_lume = alkali
+
+def get_reagents(driver):
+    driver.get("https://api-mainnet.magiceden.io/sft/collection/genopets_reagents")
+    r_reagents = driver.page_source.replace('<html><head><meta name="color-scheme" content="light dark"></head><body>'
+                                         '<pre style="word-wrap: break-word; white-space: pre-wrap;">', '')\
+        .replace('</pre></body></html>', '')
+    global tail_reagent, antenna_reagent, wing_reagent, horn_reagent, eye_reagent, mane_reagent, ear_reagent, reagents
+    tail_reagent = float(json.loads(r_reagents)[0]["marketStats"]["lowestAskUi"])
+    antenna_reagent = float(json.loads(r_reagents)[1]["marketStats"]["lowestAskUi"])
+    wing_reagent = float(json.loads(r_reagents)[2]["marketStats"]["lowestAskUi"])
+    horn_reagent = float(json.loads(r_reagents)[3]["marketStats"]["lowestAskUi"])
+    eye_reagent = float(json.loads(r_reagents)[4]["marketStats"]["lowestAskUi"])
+    mane_reagent = float(json.loads(r_reagents)[5]["marketStats"]["lowestAskUi"])
+    ear_reagent = float(json.loads(r_reagents)[6]["marketStats"]["lowestAskUi"])
+    reagents = tail_reagent, antenna_reagent, wing_reagent, horn_reagent, eye_reagent, mane_reagent, ear_reagent
+
+def get_food_toys(driver):
+    driver.get("https://api-mainnet.magiceden.io/sft/collection/genopets_food_toys")
+    r_food_toys = driver.page_source.replace('<html><head><meta name="color-scheme" content="light dark"></head><body>'
+                                         '<pre style="word-wrap: break-word; white-space: pre-wrap;">', '')\
+        .replace('</pre></body></html>', '')
+    global carrot, duck, food_toys
+    carrot = float(json.loads(r_food_toys)[0]["marketStats"]["lowestAskUi"])
+    duck = float(json.loads(r_food_toys)[1]["marketStats"]["lowestAskUi"])
+    food_toys = carrot, duck
+
+def get_gpets(driver):
+    driver.get("https://api-mainnet.magiceden.io/idxv2/getListedNftsByCollectionSymbol?collectionSymbol=genopets"
+               "&onChainCollectionAddress=&direction=2&field=1&limit=3218&offset=0")
+    r_gpets = driver.page_source.replace('<html><head><meta name="color-scheme" content="light dark"></head><body>'
+                                         '<pre style="word-wrap: break-word; white-space: pre-wrap;">', '')\
+        .replace('</pre></body></html>', '')
+    r_gpets = json.loads(r_gpets)
+
+    global gpets
+    gpets = {}
+    gpets_count = 0
+    while True:
+        gpet_id = int(r_gpets["results"][gpets_count]["title"].replace("Genesis Genopet #", ""))
+        gpet_price = round(float(r_gpets["results"][gpets_count]["price"]) * 1.065, 3)
+        gpet_image = r_gpets["results"][gpets_count]["properties"]["files"][1]["uri"]
+        gpet_mintaddress = r_gpets["results"][gpets_count]["mintAddress"]
+        gpet_owner = r_gpets["results"][gpets_count]["owner"]
+        gpets_attributes = r_gpets["results"][gpets_count]["attributes"]
+        gpet_level = int([gpets_attributes[i]["value"] for i in range(len(gpets_attributes)) if
+                          gpets_attributes[i]["trait_type"] == "Level"][0])
+        gpet_xp = int([gpets_attributes[i]["value"] for i in range(len(gpets_attributes)) if
+                       gpets_attributes[i]["trait_type"] == "Current XP"][0])
+        gpet_stage = int([gpets_attributes[i]["value"] for i in range(len(gpets_attributes)) if
+                          gpets_attributes[i]["trait_type"] == "Pet Stage"][0])
+        gpet_algorythm = [gpets_attributes[i]["value"] for i in range(len(gpets_attributes)) if
+                          gpets_attributes[i]["trait_type"] == "Algorithm"][0]
+        augments_dict = dict.fromkeys(["Head", "Body", "Antennae", "Ears", "Horn", "Eyes", "Mane",
+                                       "Wings", "Tail"], None)
+        for i in range(len(r_gpets["results"][gpets_count]["attributes"])):
+            trait_type = r_gpets["results"][gpets_count]["attributes"][i]["trait_type"]
+            if trait_type in augments_dict:
+                augments_dict[trait_type] = r_gpets["results"][gpets_count]["attributes"][i]["value"]
+        augment_count = len([value for value in augments_dict.values() if value is not None]) - 2
+        augments_dict["Number"] = augment_count
+        gpets[gpet_id] = {"Level": gpet_level, "Price": gpet_price, "Image": gpet_image, "XP": gpet_xp,
+                          "Stage": gpet_stage, "Algorythm": gpet_algorythm, "Augments": augments_dict,
+                          "Mint address": gpet_mintaddress, "Owner": gpet_owner}
+        gpets_count += 1
+        if len(r_gpets["results"]) == gpets_count:
+            break
+
+    sorted_gpets = sorted(gpets.items(), key=lambda item: item[1]["Price"] /
+                                                          item[1]["Augments"]["Number"] / item[1]["XP"])
+    gpets = {pet_id: pet_info for pet_id, pet_info in sorted_gpets}
+    global cheapest_gpets, highestlevel_gpets
+    cheapest_gpets = sorted(gpets.items(), key=lambda item: item[1]["Price"])
+    cheapest_gpets = {pet_id: pet_info for pet_id, pet_info in cheapest_gpets}
+    highestlevel_gpets = sorted(gpets.items(), key=lambda item: -item[1]["Level"])
+    highestlevel_gpets = {pet_id: pet_info for pet_id, pet_info in highestlevel_gpets}
+
+def get_nhabs(driver):
+    driver.get("https://api-mainnet.magiceden.io/idxv2/getListedNftsByCollectionSymbol?"
+               "collectionSymbol=genopets_habitats&onChainCollectionAddress="
+               "22pCg2FoqwUGsYuchG2zeBM1QSrU8pAZ6frudSqrq7H8&direction=2&field=1&limit=1000000&offset=0&mode=all")
+    r_nhabs = driver.page_source.replace('<html><head><meta name="color-scheme" content="light dark"></head><body>'
+                                         '<pre style="word-wrap: break-word; white-space: pre-wrap;">', '')\
+        .replace('</pre></body></html>', '')
+    r_nhabs = json.loads(r_nhabs)
+
+    global nhabs, ki, solana, gene, seed_prices
+    nhabs = {}
+    nhabs_count = 0
+    seeds = sum(i for i in seed_prices)
+    while True:
+        nhab_id = int(r_nhabs["results"][nhabs_count]["title"].replace("Habitat #", ""))
+        nhab_price = round(float(r_nhabs["results"][nhabs_count]["price"]) * 1.065, 3)
+        nhab_image = r_nhabs["results"][nhabs_count]["img"]
+        nhab_mintaddress = r_nhabs["results"][nhabs_count]["mintAddress"]
+        nhab_owner = r_nhabs["results"][nhabs_count]["owner"]
+        nhab_subs = None
+        for i in range(len(r_nhabs["results"][nhabs_count]["attributes"])):
+            atrib = r_nhabs["results"][nhabs_count]["attributes"][i]["trait_type"]
+            if atrib == "Type":
+                nhab_type = r_nhabs["results"][nhabs_count]["attributes"][i]["value"]
+            if atrib == "Level":
+                nhab_level = int(r_nhabs["results"][nhabs_count]["attributes"][i]["value"])
+            if atrib == "Element":
+                nhab_element = r_nhabs["results"][nhabs_count]["attributes"][i]["value"]
+            if atrib == "Lifespan":
+                nhab_lifespan = int(r_nhabs["results"][nhabs_count]["attributes"][i]["value"])
+            if atrib == "Durability":
+                nhab_durability = int(r_nhabs["results"][nhabs_count]["attributes"][i]["value"])
+            if atrib == "Brand New":
+                nhab_status = r_nhabs["results"][nhabs_count]["attributes"][i]["value"]
+            if atrib == "Subhabitats":
+                nhab_subs = r_nhabs["results"][nhabs_count]["attributes"][i]["value"]
+        if nhab_level == 1:
+            nhab_restorecost = round(1800 * ki / solana, 3)
+            nhab_upgradecost = round((5430 * ki + 10 * gene) / solana - seeds, 3)
+        elif nhab_level == 2:
+            nhab_restorecost = round(4200 * ki / solana, 3)
+            nhab_upgradecost = round((2410 * ki + 5 * gene) / solana - seeds, 3)
+        else:
+            nhab_restorecost = round(7200 * ki / solana, 3)
+            nhab_upgradecost = 0
+        if nhab_status == "true":
+            nhab_lifespan = 90
+            nhab_status = "Brand new"
+        elif nhab_lifespan == 0:
+            nhab_durability = 0
+            nhab_status = f"Dormant"
+        else: nhab_status = "Used"
+        if nhab_subs != None:
+            nhab_restorecost -= 1800 * ki / solana
+            nhab_subs = json.loads(nhab_subs)
+            if len(nhab_subs) == 1:
+                nhab_subs = f"Level {nhab_subs[0]['level']} {nhab_subs[0]['element']}"
+            else: nhab_subs = f"Level {nhab_subs[0]['level']} {nhab_subs[0]['element']}" \
+                              f"\nLevel {nhab_subs[1]['level']} {nhab_subs[1]['element']}"
+        nhabs[nhab_id] = {"Type": nhab_type, "Price": nhab_price, "Image": nhab_image, "Level": nhab_level,
+                          "Element": nhab_element, "Lifespan": nhab_lifespan, "Durability": nhab_durability,
+                          "Status": nhab_status, "Subhabitats": nhab_subs,
+                          "Mint address": nhab_mintaddress, "Owner": nhab_owner,
+                          "Restore cost": nhab_restorecost, "Upgrade cost": nhab_upgradecost}
+        nhabs_count += 1
+        if len(r_nhabs["results"]) == nhabs_count:
+            break
+
+    for i in nhabs.keys():
+        nhabs[i]["Total cost"] = nhabs[i]["Price"] + nhabs[i]["Upgrade cost"]
+        if nhabs[i]["Status"] == "Dormant":
+            nhabs[i]["Total cost"] += nhabs[i]["Restore cost"]
+        elif nhabs[i]["Status"] == "Used":
+            lifecycle = nhabs[i]["Lifespan"] + nhabs[i]["Durability"] + (3 - nhabs[i]["Level"]) * 90
+            nhabs[i]["Total cost"] += round((360 - lifecycle) * 10 * ki / solana, 3)
+    sorted_nhabs = sorted(nhabs.items(),
+                          key=lambda item: item[1]["Total cost"])
+    nhabs = {nhab_id: nhab_info for nhab_id, nhab_info in sorted_nhabs}
+
+    nhabs_with_subs = []
+    nhabs_without_subs = []
+    for nhab_id, nhab_info in nhabs.items():
+        if nhab_info["Subhabitats"] is not None:
+            nhabs_with_subs.append((nhab_id, nhab_info))
+        else:
+            nhabs_without_subs.append((nhab_id, nhab_info))
+    sorted_nhabs = nhabs_with_subs + nhabs_without_subs
+    nhabs = {nhab_id: nhab_info for nhab_id, nhab_info in sorted_nhabs}
+
+def get_ghabs(driver):
+    driver.get("https://api-mainnet.magiceden.io/idxv2/getListedNftsByCollectionSymbol?"
+               "collectionSymbol=genesis_genopets_habitats&onChainCollectionAddress="
+               "NTYeYJ1wr4bpM5xo6zx5En44SvJFAd35zTxxNoERYqd&direction=2&field=1&limit=5600&offset=0&mode=all")
+    r_ghabs = driver.page_source.replace('<html><head><meta name="color-scheme" content="light dark"></head><body>'
+                                         '<pre style="word-wrap: break-word; white-space: pre-wrap;">', '')\
+        .replace('</pre></body></html>', '')
+    r_ghabs = json.loads(r_ghabs)
+
+    global ghabs, ki, gene, solana, seed_prices
+    ghabs = {}
+    ghabs_count = 0
+    seeds = sum(i for i in seed_prices)
+    while True:
+        ghab_id = int(r_ghabs["results"][ghabs_count]["title"].replace("Genesis Habitat #", ""))
+        ghab_price = round(float(r_ghabs["results"][ghabs_count]["price"]) * 1.065, 3)
+        ghab_image = r_ghabs["results"][ghabs_count]["img"]
+        ghab_mintaddress = r_ghabs["results"][ghabs_count]["mintAddress"]
+        ghab_owner = r_ghabs["results"][ghabs_count]["owner"]
+        ghab_subs = None
+        for i in range(len(r_ghabs["results"][ghabs_count]["attributes"])):
+            atrib = r_ghabs["results"][ghabs_count]["attributes"][i]["trait_type"]
+            if atrib == "Type":
+                ghab_type = r_ghabs["results"][ghabs_count]["attributes"][i]["value"]
+            if atrib == "Level":
+                ghab_level = int(r_ghabs["results"][ghabs_count]["attributes"][i]["value"])
+            if atrib == "Element":
+                ghab_element = r_ghabs["results"][ghabs_count]["attributes"][i]["value"]
+            if atrib == "Lifespan":
+                ghab_lifespan = int(r_ghabs["results"][ghabs_count]["attributes"][i]["value"])
+            if atrib == "Durability":
+                ghab_durability = int(r_ghabs["results"][ghabs_count]["attributes"][i]["value"])
+            if atrib == "Brand New":
+                ghab_status = r_ghabs["results"][ghabs_count]["attributes"][i]["value"]
+            if atrib == "Subhabitats":
+                ghab_subs = r_ghabs["results"][ghabs_count]["attributes"][i]["value"]
+        if ghab_level == 1:
+            ghab_restorecost = round(1800 * ki / solana, 3)
+            ghab_upgradecost = round((5430 * ki + 10 * gene) / solana - seeds, 3)
+        elif ghab_level == 2:
+            ghab_restorecost = round(4200 * ki / solana, 3)
+            ghab_upgradecost = round((2410 * ki + 5 * gene) / solana - seeds, 3)
+        else:
+            ghab_restorecost = round(7200 * ki / solana, 3)
+            ghab_upgradecost = 0
+        if ghab_status == "true":
+            ghab_lifespan = 90
+            ghab_status = "Brand new"
+        elif ghab_lifespan == 0:
+            ghab_durability = 0
+            ghab_status = f"Dormant"
+        else: ghab_status = "Used"
+        if ghab_subs != None:
+            ghab_restorecost -= 1800 * ki / solana
+            ghab_subs = json.loads(ghab_subs)
+            if len(ghab_subs) == 1:
+                ghab_subs = f"Level {ghab_subs[0]['level']} {ghab_subs[0]['element']}"
+            else: ghab_subs = f"Level {ghab_subs[0]['level']} {ghab_subs[0]['element']}" \
+                              f"\nLevel {ghab_subs[1]['level']} {ghab_subs[1]['element']}"
+        ghabs[ghab_id] = {"Type": ghab_type, "Price": ghab_price, "Image": ghab_image, "Level": ghab_level,
+                          "Element": ghab_element, "Lifespan": ghab_lifespan, "Durability": ghab_durability,
+                          "Status": ghab_status, "Subhabitats": ghab_subs,
+                          "Mint address": ghab_mintaddress, "Owner": ghab_owner,
+                          "Restore cost": ghab_restorecost, "Upgrade cost": ghab_upgradecost}
+        ghabs_count += 1
+        if len(r_ghabs["results"]) == ghabs_count:
+            break
+
+    for i in ghabs.keys():
+        ghabs[i]["Total cost"] = ghabs[i]["Price"] + ghabs[i]["Upgrade cost"]
+        if ghabs[i]["Status"] == "Dormant":
+            ghabs[i]["Total cost"] += ghabs[i]["Restore cost"]
+        elif ghabs[i]["Status"] == "Used":
+            lifecycle = ghabs[i]["Lifespan"] + ghabs[i]["Durability"] + (3 - ghabs[i]["Level"]) * 90
+            ghabs[i]["Total cost"] += round((360 - lifecycle) * 10 * ki / solana, 3)
+    sorted_ghabs = sorted(ghabs.items(),
+                          key=lambda item: item[1]["Total cost"])
+    ghabs = {ghab_id: ghab_info for ghab_id, ghab_info in sorted_ghabs}
+
+    ghabs_with_subs = []
+    ghabs_without_subs = []
+    for ghab_id, ghab_info in ghabs.items():
+        if ghab_info["Subhabitats"] is not None:
+            ghabs_with_subs.append((ghab_id, ghab_info))
+        else:
+            ghabs_without_subs.append((ghab_id, ghab_info))
+    sorted_ghabs = ghabs_with_subs + ghabs_without_subs
+    ghabs = {ghab_id: ghab_info for ghab_id, ghab_info in sorted_ghabs}
+
+def get_augments(driver):
+    driver.get("https://api-mainnet.magiceden.io/sft/collection/genopets_augments")
+    r_augments1 = driver.page_source.replace('<html><head><meta name="color-scheme" content="light dark"></head><body>'
+                                            '<pre style="word-wrap: break-word; white-space: pre-wrap;">', '')\
+        .replace('</pre></body></html>', '')[:-1]
+    driver.get("https://api-mainnet.magiceden.io/sft/collection/genopets_augments?offset=100")
+    r_augments2 = driver.page_source.replace('<html><head><meta name="color-scheme" content="light dark"></head><body>'
+                                             '<pre style="word-wrap: break-word; white-space: pre-wrap;">', '') \
+        .replace('</pre></body></html>', '')[1:]
+    r_augments = json.loads(r_augments1 + ", " + r_augments2)
+
+    global augments
+    augments = []
+    mintcost = round(150 * ki / solana + 2 * gene / solana, 3)
+    for i in range(len(r_augments)):
+        attributes = r_augments[i]["tokenMetadata"]["attributes"]
+        variant_found = False
+        for x in range(len(attributes)):
+            if attributes[x]["trait_type"] == "Class":
+                classa = attributes[x]["value"]
+            if attributes[x]["trait_type"] == "Variant":
+                variant = attributes[x]["value"]
+                variant_found = True
+            if attributes[x]["trait_type"] == "Style":
+                style = attributes[x]["value"]
+            if attributes[x]["trait_type"] == "Part":
+                part = attributes[x]["value"]
+        if variant_found == False:
+            variant = "Basic"
+        floorprice = r_augments[i]["marketStats"].get("lowestAskUi", None)
+        if floorprice is not None:
+            nooflists = r_augments[i]["marketStats"]["numAsks"]
+            image = r_augments[i]["tokenMetadata"]["img"]
+            mintaddress = r_augments[i]["marketAddress"]
+            multipliers = {"Common": {"Basic": 1 / 2.8, "Enhanced": 1 / 1.3, "Superior": 1.3},
+                           "Uncommon": {"Basic": 2.7, "Enhanced": 4, "Superior": 7},
+                           "Rare": {"Basic": 15, "Enhanced": 25, "Superior": 60, "Alkali": 120},
+                           "Legendary": {"Alkali": 725}}
+            if classa in multipliers and variant in multipliers[classa]:
+                truecost = round(mintcost * multipliers[classa][variant], 3)
+                if variant == "Alkali":
+                    if style == "Safir":
+                        truecost = round(truecost * 0.6526, 3)
+                    elif style == "Dactyl":
+                        truecost = round(truecost * 1.03, 3)
+                    elif style == "Sif":
+                        truecost = round(truecost * 2.011, 3)
+            augments.append([classa, variant, style, part, floorprice, nooflists, image, mintaddress, truecost])
+    augments = sorted(augments, key=lambda x: x[4] / x[8])
+
+def get_cosmetics(driver):
+    driver.get("https://api-mainnet.magiceden.io/sft/collection/genopets_cosmetics")
+    r_cosmetics = driver.page_source.replace('<html><head><meta name="color-scheme" content="light dark"></head><body>'
+                                            '<pre style="word-wrap: break-word; white-space: pre-wrap;">', '')\
+        .replace('</pre></body></html>', '')
+    r_cosmetics = json.loads(r_cosmetics)
+
+    global cosmetics
+    cosmetics = []
+    for i in range(len(r_cosmetics)):
+        mintcost = round(120 * ki / solana + gene / solana, 3)
+        attributes = r_cosmetics[i]["tokenMetadata"]["attributes"]
+        for x in range(len(attributes)):
+            if attributes[x]["trait_type"] == "Family":
+                family = attributes[x]["value"].split()[0]
+                if family == "Subsynth":
+                    mintcost = round(230 * ki / solana + 2 * gene / solana, 3)
+            if attributes[x]["trait_type"] == "Variant":
+                variant = attributes[x]["value"]
+                if variant != "Alkali":
+                    palette = attributes[x]["value"].split()[0]
+                    color = attributes[x]["value"].split()[1]
+                    truecost = round(mintcost * 1.8, 3)
+                else:
+                    palette, color = "", ""
+                    truecost = round(mintcost * 4.7, 3)
+        try:
+            floorprice = r_cosmetics[i]["marketStats"]["lowestAskUi"]
+            nooflists = r_cosmetics[i]["marketStats"]["numAsks"]
+        except KeyError:
+            floorprice = 0
+            nooflists = 0
+        image = r_cosmetics[i]["tokenMetadata"]["img"]
+        mintaddress = r_cosmetics[i]["marketAddress"]
+        cosmetics.append([palette, color, variant, family, floorprice, nooflists, image, mintaddress, truecost])
+    cosmetics = sorted(cosmetics, key=lambda x: float('inf') if x[4] == 0 else x[4] / x[8])
+
+timer = None
+def get_core_values():
+    global solana, gene, ki
+    solana = get_geno_coins("solana")
+    ki = get_geno_coins("genopets-ki")
+    gene = get_geno_coins("genopets")
+    try:
+        driver = uc.Chrome()
+        driver.set_page_load_timeout(45)
+        get_crystals(driver)
+        get_seeds(driver)
+        get_alkali(driver)
+        get_reagents(driver)
+        get_food_toys(driver)
+        get_gpets(driver)
+        get_nhabs(driver)
+        get_ghabs(driver)
+        get_augments(driver)
+        get_cosmetics(driver)
+        driver.quit()
+    except:
+        print("Chrome timeout - restart")
+        driver.quit()
+        time.sleep(10)
+        get_core_values()
+    global timer
+    timer = threading.Timer(3300, get_core_values)
+    timer.start()
+get_core_values()
+
+@kakuzu.event
+async def on_ready():
+    threading.Timer(86400, refresh).start()
+    print("Kakuzu running")
+
+@kakuzu.command(pass_context = True , aliases= ["here?", "here", "there?", "there", "on?"])
+@commands.has_any_role('Hiddan', 'Jiraiya', 'Legendary Sannin', 'Jounin', 'Anbu', 'Chunin', 'Genin')
+async def ping(ctx):
+
+    COOLDOWN = 90
+    USER_CD = 800
+    check_if_oncooldown(cooldowns, "ping", COOLDOWN, USER_CD, ctx.channel.id, ctx.author.id)
+    count = cooldowns[ctx.channel.id]["ping"]["users"][ctx.author.id]["count"]
+    global kills
+
+    if ctx.author.id in kills: return
+    if count == 2:
+        cooldowns[ctx.channel.id]["ping"]["count"] -= 1
+        return await ctx.send(random.choice(warnings_quotes))
+    if count >= 3:
+        kills.append(ctx.author.id)
+        return await ctx.send(random.choice(ignores))
+
+    output = random.choice(ready_notices)
+    choice = random.randint(0, 5)
+    if choice == 0:
+        output = output + random.choice(ready_notices)
+    await ctx.send(output)
+
+@kakuzu.command(pass_context = True , aliases= ["I", "me", "Me", "I'm", "i'm", "im", "you", "You", "youre", "Youre",
+                                                "your", "Your", "you're", "You're", "fuck", "Fuck"])
+@commands.has_any_role('Hiddan', 'Jiraiya', 'Legendary Sannin', 'Jounin', 'Anbu', 'Chunin', 'Genin')
+async def i(ctx, *args):
+
+    COOLDOWN = 220
+    USER_CD = 500
+    check_if_oncooldown(cooldowns, "i", COOLDOWN, USER_CD, ctx.channel.id, ctx.author.id)
+    count = cooldowns[ctx.channel.id]["i"]["users"][ctx.author.id]["count"]
+    global kills
+
+    if ctx.author.id in kills: return
+    if count == 2:
+        cooldowns[ctx.channel.id]["i"]["count"] -= 1
+        return await ctx.send(random.choice(warnings_quotes))
+    if count >= 3:
+        kills.append(ctx.author.id)
+        return await ctx.send(random.choice(ignores))
+
+    arg_list = list(args)
+    ins_inputs = ["dumb", "stupid", "idiot", "retard", "retarded", "suck", "suc", "suk", "dick","fag", "faggot",
+                  "shit", "asshole", "ass", "hoe", "bitch", "useless", "stink"]
+    for i in ins_inputs:
+        if i in arg_list:
+            return await ctx.send(random.choice(insults))
+    if "love" or "like" or "adore" or "apreciate" or "appreciate" or "respect" or "hate" or "smart" in arg_list:
+        if "you" in arg_list:
+            return await ctx.send(random.choice(love_words))
+        else: return await ctx.send(random.choice(so_what))
+
+@kakuzu.command(pass_context = True , aliases= ["get", "cost", "buy", "list"])
+@commands.has_any_role('Hiddan', 'Jiraiya', 'Legendary Sannin', 'Jounin', 'Anbu', 'Chunin', 'Genin')
+async def price(ctx, *arr):
+
+    COOLDOWN = 300
+    USER_CD = 1000
+    check_if_oncooldown(cooldowns, "price", COOLDOWN, USER_CD, ctx.channel.id, ctx.author.id)
+    count = cooldowns[ctx.channel.id]["price"]["users"][ctx.author.id]["count"]
+    global kills
+    global earth, fire, metal, water, wood
+    global grade1, grade2, grade3, grade4, grade5, grade6
+    global tail_reagent, antenna_reagent, wing_reagent, horn_reagent, eye_reagent, mane_reagent, ear_reagent
+    global carrot, duck
+    global gpets,cheapest_gpets, highestlevel_gpets
+    global nhabs, ghabs, alkali, augments, cosmetics
+
+    if ctx.author.id in kills: return
+    if count == 3:
+        cooldowns[ctx.channel.id]["price"]["count"] -= 1
+        return await ctx.send(random.choice(warnings_quotes))
+    if count >= 4:
+        kills.append(ctx.author.id)
+        return await ctx.send(random.choice(ignores))
+
+    output = ""
+    arr_list = []
+    for userinput in arr:
+        found_coin = False
+        if userinput.lower() in cmc_dict:
+            url_part = cmc_dict[userinput.lower()]
+            found_coin = True
+            arr_list.append(userinput.lower())
+        elif userinput.lower() in cmc_dict.values():
+            url_part = userinput.lower()
+            found_coin = True
+            arr_list.append(userinput.lower())
+
+        if found_coin == True:
+            output = output + f"\n{cmc_short[url_part]} to usd: \n➤ {get_geno_coins(url_part)}\n"
+        elif userinput in ["crystals", "crystal", "cryst", "cristal", "cristals", "crist"]:
+            output += f"\nCrystals:\nMint cost: {round(10 * ki / solana, 4)} sol / 10 ki" \
+                      f"\n➤ Earth: {earth} sol / {round(earth * solana/ki * 1.01, 2)} ki" \
+                      f"\n➤ Fire: {fire} sol / {round(fire * solana / ki * 1.01, 2)} ki" \
+                      f"\n➤ Metal: {metal} sol / {round(metal * solana / ki * 1.01, 2)} ki" \
+                      f"\n➤ Water: {water} sol / {round(water * solana / ki * 1.01, 2)} ki" \
+                      f"\n➤ Wood: {wood} sol / {round(wood * solana / ki * 1.01, 2)} ki" \
+                      f"\n<https://magiceden.io/marketplace/genopets_genotype_crystals>\n"
+        elif userinput == "seeds":
+            output += f"\nSeeds:" \
+                      f"\n➤ Grade 1: {grade1} sol / {round(grade1*solana/ki*1.01)} ki" \
+                      f"\n➤ Grade 2: {grade2} sol / {round(grade2*solana/ki*1.01)} ki" \
+                      f"\n➤ Grade 3: {grade3} sol / {round(grade3*solana/ki*1.01)} ki" \
+                      f"\n➤ Grade 4: {grade4} sol / {round(grade4*solana/ki*1.01)} ki" \
+                      f"\n➤ Grade 5: {grade5} sol / {round(grade5*solana/ki*1.01)} ki" \
+                      f"\n➤ Grade 6: {grade6} sol / {round(grade6*solana/ki*1.01)} ki" \
+                      f"\n<https://magiceden.io/marketplace/genopets_terraform_seeds_sft>\n"
+        elif userinput == "reagents":
+            output += f"\nReagents:\nMint cost: {round(120 * ki / solana, 4)} sol / 120 ki" \
+                      f"\n➤ Tail: {tail_reagent} sol / {round(tail_reagent*solana/ki*1.01, 2)} ki" \
+                      f"\n➤ Antenna: {antenna_reagent} sol / {round(antenna_reagent*solana/ki*1.01, 2)} ki" \
+                      f"\n➤ Wing: {wing_reagent} sol / {round(wing_reagent*solana/ki*1.01, 2)} ki" \
+                      f"\n➤ Horn: {horn_reagent} sol / {round(horn_reagent*solana/ki*1.01, 2)} ki" \
+                      f"\n➤ Eye: {eye_reagent} sol / {round(eye_reagent*solana/ki*1.01, 2)} ki" \
+                      f"\n➤ Mane: {mane_reagent} sol / {round(mane_reagent*solana/ki*1.01, 2)} ki" \
+                      f"\n➤ Ear: {ear_reagent} sol / {round(ear_reagent*solana/ki*1.01, 2)} ki" \
+                      f"\n<https://magiceden.io/marketplace/genopets_reagents>\n"
+        elif userinput in ["foodtoys", "foodstoys", "foodandtoys", "foodsandtoys"]:
+            output += f"\nFood and toys:" \
+                      f"\n➤ Carrot - {carrot} sol / {round(carrot*solana/ki*1.01, 2)} ki" \
+                      f"\n➤ Duck - {duck} sol / {round(duck*solana/ki*1.01, 2)} ki" \
+                      f"\n<https://magiceden.io/marketplace/genopets_food_toys>\n"
+        elif userinput in ["augments", "agm", "augm", "augment"]:
+            output += f"\nBest augments to buy:"
+            for i in augments[:10]:
+                output += f"\n➤ {i[0]} {i[1]} {i[2]} {i[3]} - {i[4]} sol / {round(i[4] * solana / ki)} ki"
+            output += "\n<https://magiceden.io/marketplace/genopets_augments>\n"
+        elif userinput in ["augmentsnext", "agmnext", "augmnext", "augmentnext"]:
+            output += f"\nBest augments 11-20:"
+            for i in augments[10:20]:
+                output += f"\n➤ {i[0]} {i[1]} {i[2]} {i[3]} - {i[4]} sol / {round(i[4] * solana / ki)} ki"
+            output += "\n"
+        elif userinput in ["augmentsworst", "agmworst", "augmworst", "augmentworst"]:
+            output += f"\nWorst augments you could buy:"
+            for i in augments[-10:]:
+                output += f"\n➤ {i[0]} {i[1]} {i[2]} {i[3]} - {i[4]} sol / {round(i[4] * solana / ki)} ki"
+            output += "\n"
+        elif userinput in ["cosmetic", "cosmetics", "chroma", "chromas"]:
+            output += f"\nBest chroma crystals to buy:"
+            for i in cosmetics[:10]:
+                output += f"\n➤ # {i[2]} {i[3]} - {i[4]} sol / {round(i[4] * solana / ki)} ki"
+            output += "\n<https://magiceden.io/marketplace/genopets_cosmetics>\n"
+        elif userinput in ["cosmeticnext", "cosmeticsnext", "chromanext", "chromasnext"]:
+            output += f"\nBest chroma crystals 11-20:"
+            for i in cosmetics[10:20]:
+                output += f"\n➤ # {i[2]} {i[3]} - {i[4]} sol / {round(i[4] * solana / ki)} ki"
+            output += "\n"
+        elif userinput in ["cosmeticworst", "cosmeticsworst", "chromaworst", "chromasworst"]:
+            output += f"\nWorst chroma crystals to buy:"
+            for i in [c for c in cosmetics if c[4] != 0][-10:]:
+                output += f"\n➤ # {i[2]} {i[3]} - {i[4]} sol / {round(i[4] * solana / ki)} ki"
+            output += "\n"
+        elif userinput in ["gpets", "ggpets", "genesispets", "pets"]:
+            output += f"\nBest Genesis Genopets\nby price/value ratio:"
+            for pet_id, pet_info in list(gpets.items())[:10]:
+                output += f"\n➤ # {pet_id} - Level {pet_info['Level']} - {pet_info['Price']} sol"
+            output += "\n"
+        elif userinput in ["gpetsworst", "genesispetsworst", "petsworst"]:
+            output += f"\nWorst Genesis Genopets\nby price/value ratio:"
+            for pet_id, pet_info in list(gpets.items())[-10:]:
+                output += f"\n➤ # {pet_id} - Level {pet_info['Level']} - {pet_info['Price']} sol"
+            output += "\n"
+        elif userinput in ["gpetscheap", "gpetscheapest", "petscheap", "petscheapest"]:
+            output += f"\nCheapest Genesis Genopets:"
+            for pet_id, pet_info in list(cheapest_gpets.items())[:10]:
+                output += f"\n➤ # {pet_id} - Level {pet_info['Level']} - {pet_info['Price']} sol"
+            output += "\n"
+        elif userinput in ["gpetslvl", "gpetslevel", "petslvl", "petslevel"]:
+            output += f"\nHighest levels Genesis Genopets:"
+            for pet_id, pet_info in list(highestlevel_gpets.items())[:10]:
+                output += f"\n➤ # {pet_id} - Level {pet_info['Level']} - {pet_info['Price']} sol"
+            output += "\n"
+        elif userinput in ["habitats", "habs", "hab", "nhabs", "nhab", "nhabitats", "rhabs", "rhab", "rhabitats"]:
+            output += f"\nBest regular Habitats:"
+            for nhab_id, nhab_info in list(nhabs.items())[:10]:
+                output += f"\n➤ # {nhab_id} - Level {nhab_info['Level']} - {nhab_info['Element']} - " \
+                          f"{nhab_info['Status']} - {nhab_info['Price']} sol"
+            output += "\n"
+        elif userinput in ["habitatsnext", "habsnext", "habnext", "nhabsnext", "nhabnext", "nhabitatsnext",
+                           "rhabsnext", "rhabnext", "rhabitatsnext"]:
+            output += f"\nBest regular Habitats 11-20:"
+            for nhab_id, nhab_info in list(nhabs.items())[10:20]:
+                output += f"\n➤ # {nhab_id} - Level {nhab_info['Level']} - {nhab_info['Element']} - " \
+                          f"{nhab_info['Status']} - {nhab_info['Price']} sol"
+            output += "\n"
+        elif userinput in ["habitatsworst", "habsworst", "habworst", "nhabsworst", "nhabworst", "nhabitatsworst",
+                           "rhabsworst", "rhabworst", "rhabitatsworst"]:
+            output += f"\nWorst regular Habitats:"
+            for nhab_id, nhab_info in list(nhabs.items())[-10:]:
+                output += f"\n➤ # {nhab_id} - Level {nhab_info['Level']} - {nhab_info['Element']} - " \
+                          f"{nhab_info['Status']} - {nhab_info['Price']} sol"
+            output += "\n"
+        elif userinput in ["ghabitats", "ghabs", "ghab"]:
+            output += f"\nBest Genesis Habitats:"
+            for ghab_id, ghab_info in list(ghabs.items())[:10]:
+                output += f"\n➤ # {ghab_id} - Level {ghab_info['Level']} - {ghab_info['Element']} - " \
+                          f"{ghab_info['Status']} - {ghab_info['Price']} sol"
+            output += "\n"
+        elif userinput in ["ghabitatsnext", "ghabsnext", "ghabnext"]:
+            output += f"\nBest Genesis Habitats 11-20:"
+            for ghab_id, ghab_info in list(ghabs.items())[10:20]:
+                output += f"\n➤ # {ghab_id} - Level {ghab_info['Level']} - {ghab_info['Element']} - " \
+                          f"{ghab_info['Status']} - {ghab_info['Price']} sol"
+            output += "\n"
+        elif userinput in ["ghabitatsworst", "ghabsworst", "ghabworst"]:
+            output += f"\nWorst Genesis Habitats:"
+            for ghab_id, ghab_info in list(ghabs.items())[-10:]:
+                output += f"\n➤ # {ghab_id} - Level {ghab_info['Level']} - {ghab_info['Element']} - " \
+                          f"{ghab_info['Status']} - {ghab_info['Price']} sol"
+            output += "\n"
+        elif userinput == "alkali":
+            output += f"\nAlkali items:" \
+                      f"\n➤ Legendary Ferro Ear - {alkali[0]} sol" \
+                      f"\n➤ Rare Safir Tail - {alkali[1]} sol" \
+                      f"\n➤ Rare Dactyl Wing - {alkali[2]} sol" \
+                      f"\n➤ Rare Sif Horn - {alkali[3]} sol" \
+                      f"\n➤ 2x Energy Boost - {alkali[4]} sol" \
+                      f"\n➤ Adsynth Crystal - {alkali[5]} sol" \
+                      f"\n➤ Subsynth Crystal - {alkali[6]} sol" \
+                      f"\n➤ Lume Crystal - {alkali[7]} sol\n"
+        else: output = output + f'\n"{userinput}" not found.\n'
+    return await ctx.send(output)
+
+@kakuzu.command(pass_context = True , aliases= ["swap", "swp", "exchange", "change", "turn"])
+@commands.has_any_role('Hiddan', 'Jiraiya', 'Legendary Sannin', 'Jounin', 'Anbu', 'Chunin', 'Genin')
+async def convert(ctx, *args):
+
+    COOLDOWN = 600
+    USER_CD = 1400
+    check_if_oncooldown(cooldowns, "convert", COOLDOWN, USER_CD, ctx.channel.id, ctx.author.id)
+    count = cooldowns[ctx.channel.id]["convert"]["users"][ctx.author.id]["count"]
+    global kills
+
+    if ctx.author.id in kills: return
+    if count == 8:
+        cooldowns[ctx.channel.id]["convert"]["count"] -= 1
+        return await ctx.send(random.choice(warnings_quotes))
+    if count >= 9:
+        kills.append(ctx.author.id)
+        return await ctx.send(random.choice(ignores))
+
+    link_words = ["to", "into", "too", "t", "in", "and"]
+    good_args = list(args)
+    for i in args:
+        if i in link_words:
+            i_pos = good_args.index(i)
+            how_many = good_args[i_pos - 2]
+            coin1 = good_args[i_pos - 1]
+            to = i
+            coin2 = good_args[i_pos + 1]
+    try:
+        multiplier = float(how_many)
+        try:
+            multiplier = int(how_many)
+        except ValueError: pass
+    except ValueError: multiplier = 1
+
+    found_coin = False
+    if coin1.lower() in cmc_all and coin2.lower() in cmc_all:
+        if coin1.lower() in cmc_dict:
+            url_part1 = cmc_dict[coin1.lower()]
+        else: url_part1 = coin1.lower()
+        if coin2.lower() in cmc_dict:
+            url_part2 = cmc_dict[coin2.lower()]
+        else: url_part2 = coin2.lower()
+        found_coin = True
+
+    if found_coin == True:
+        cmc_price1 = get_geno_coins(url_part1)
+        cmc_price2 = get_geno_coins(url_part2)
+        result = multiplier * cmc_price1 * 0.99 / cmc_price2
+        if cmc_price2 < 1 and result > 99:
+            result = int(multiplier * cmc_price1 * 0.99 / cmc_price2)
+        elif result <= 99 and result > 9:
+            result = round(multiplier * cmc_price1 * 0.99 / cmc_price2, 2)
+        elif result <= 9 and result >= 0.1:
+            result = round(multiplier * cmc_price1 * 0.99 / cmc_price2, 3)
+        else:
+            result = round(multiplier * cmc_price1 * 0.99 / cmc_price2, 4)
+        await ctx.send(f"{multiplier} {cmc_short[url_part1]} ≈ "
+                       f"{result} {cmc_short[url_part2]}")
+
+    elif coin1 not in cmc_all and coin2 in cmc_all:
+        await ctx.send(f'Search "{coin1}" for yourself.')
+    elif coin2 not in cmc_all and coin1 in cmc_all:
+        await ctx.send(f'Search "{coin2}" for yourself.')
+    else: await ctx.send(random.choice(not_understand))
+
+@kakuzu.command(pass_context = True , aliases= ["rental", "rate", "rates", "alchemy", "alchemize", "alch"])
+@commands.has_any_role('Hiddan', 'Jiraiya', 'Legendary Sannin', 'Jounin', 'Anbu', 'Chunin', 'Genin')
+async def rent(ctx, *args):
+
+    COOLDOWN = 300
+    USER_CD = 1000
+    check_if_oncooldown(cooldowns, "rent", COOLDOWN, USER_CD, ctx.channel.id, ctx.author.id)
+    count = cooldowns[ctx.channel.id]["rent"]["users"][ctx.author.id]["count"]
+    global kills
+
+    if ctx.author.id in kills: return
+    if count == 6:
+        cooldowns[ctx.channel.id]["rent"]["count"] -= 1
+        return await ctx.send(random.choice(warnings_quotes))
+    if count >= 7:
+        kills.append(ctx.author.id)
+        return await ctx.send(random.choice(ignores))
+
+    elements = ["earth", "fire", "metal", "water", "wood", "genesis", "regular", "normal"]
+    alchemy_words = ["alchemy", "slots", "slot", "spot", "spots", "crystals", "crystal",
+                     "alchemy?", "slots?", "slot?", "spot?", "spots?", "crystals?", "crystal?"]
+    multiplier_is_string = False
+    used_weeks = True
+
+    good_args = list(args)
+
+    for i in args:
+        if i in alchemy_words and good_args[good_args.index(i) - 1] in elements:
+            i_pos = good_args.index(i)
+            multiplier = good_args[i_pos - 2]
+            element = good_args[i_pos - 1]
+            alchemy = i
+        elif i in alchemy_words and good_args[good_args.index(i) - 1] not in elements:
+            return await ctx.send("Write the element after the number of slots.")
+
+    error_answer = random.choice(not_understand)
+    try:
+        multiplier = int(multiplier)
+    except ValueError:
+        multiplier = 1
+        multiplier_is_string = True
+    except UnboundLocalError:
+        return await ctx.send(error_answer)
+
+    weeks = 1
+
+    for wn in range(len(good_args[:-2])):
+        if good_args[wn] == "for" and good_args[wn+2] in ["week", "weeks", "wek", "weks"]:
+            try:
+                weeks = int(good_args[wn+1])
+            except ValueError:
+                await ctx.send(f'Write "{good_args[wn+1]}" as a number.\n')
+
+    if 6 > weeks > 1:
+        weeks = weeks * (weeks * 7 + 1) / (weeks * 8 + 1) * (1 - (weeks * 2 / 100))
+    elif 29 > weeks > 5:
+        await ctx.send(f"I don't advise you to rent for {weeks} weeks, but...\n")
+        weeks = weeks * (weeks * 7 + 1) / (weeks * 8 + 1) * 0.75
+    elif weeks > 28:
+        await ctx.send(f"Wow, {weeks} weeks, ok.\n")
+        weeks = weeks * (weeks * 7 + 1) / (weeks * 8 + 1) * 0.75
+
+    if multiplier in range(1, 10):
+
+        earth = crystal_prices[0] * solana / ki
+        fire = crystal_prices[1] * solana / ki
+        metal = crystal_prices[2] * solana / ki
+        water = crystal_prices[3] * solana / ki
+        wood = crystal_prices[4] * solana / ki
+        crystal = (earth + fire + metal + water + wood) / 5
+
+        earth_rent = int((earth**2 / 10) + (earth**2 % 10 > 0))
+        fire_rent = int((fire**2 / 10) + (fire**2 % 10 > 0))
+        metal_rent = int((metal**2 / 10) + (metal**2 % 10 > 0))
+        water_rent = int((water**2 / 10) + (water**2 % 10 > 0))
+        wood_rent = int((wood**2 / 10) + (wood**2 % 10 > 0))
+        genesis_prerent = float((earth**2/10 + fire**2/10 + metal**2/10 + water**2/10 + wood**2/10)/5*1.3)
+        genesis_rent = int(genesis_prerent + (genesis_prerent % 10 > 0))
+
+        all_rents = [earth_rent, fire_rent, metal_rent, water_rent, wood_rent, genesis_rent]
+
+        for element_word in elements[:5]:
+            if element.lower() == element_word:
+                specific_rent = all_rents[elements.index(element_word)]
+                output = f"{random.choice(possible_rent)} "\
+                         f"{int(specific_rent * multiplier * weeks)} Ki / "\
+                         f"{round(specific_rent * ki / gene * multiplier * weeks, 2)} Gene per week."
+                if weeks > 1:
+                    output = f"{random.choice(possible_rent)} "\
+                             f"{int(specific_rent * multiplier * weeks)} Ki / "\
+                             f"{round(specific_rent * ki / gene * multiplier * weeks, 2)} Gene."
+                if multiplier_is_string == True:
+                    output = output + f" - for 1 " \
+                                      f"{random.choice([alchemy_words[2], alchemy_words[3], alchemy_words[6]])}"
+                await ctx.send(output)
+
+        output_genesis = f"{random.choice(possible_rent)} {int(genesis_rent * multiplier * weeks)} Ki / "\
+                        f"{round(genesis_prerent * ki / gene  * multiplier * weeks + 0.03, 2)} Gene per week."
+        output_normal = f"{random.choice(possible_rent)} {int(round(genesis_rent * multiplier * weeks / 1.3, 0))} Ki / "\
+                         f"{round(genesis_prerent / 1.3 * ki / gene  * multiplier * weeks, 2)} Gene per week."
+        if weeks > 1:
+            output_genesis = f"{random.choice(possible_rent)} {int(genesis_rent * multiplier * weeks)} Ki / " \
+                             f"{round(genesis_prerent * ki / gene * multiplier * weeks + 0.03, 2)} Gene."
+            output_normal = f"{random.choice(possible_rent)} {int(round(genesis_rent * multiplier * weeks / 1.3, 0))} Ki / " \
+                            f"{round(genesis_prerent / 1.3 * ki / gene * multiplier * weeks, 2)} Gene."
+        if element.lower() == "normal" or element.lower() == "regular":
+            if multiplier_is_string == True:
+                output_normal = output_normal + \
+                                f" - for 1 {random.choice([alchemy_words[2], alchemy_words[3], alchemy_words[6]])}"
+            await ctx.send(output_normal)
+        elif element.lower() == "genesis":
+            if multiplier_is_string == True:
+                output_genesis = output_genesis + \
+                                 f" - for 1 {random.choice([alchemy_words[2], alchemy_words[3], alchemy_words[6]])}"
+            await ctx.send(output_genesis)
+
+    else: await ctx.send("Maximum number of slots is 9 per setup.")
+
+@kakuzu.command(pass_context = True , aliases= ["teraform", "bestgrade", "terraforming", "teraforming", "form"])
+@commands.has_any_role('Hiddan', 'Jiraiya', 'Legendary Sannin', 'Jounin', 'Anbu', 'Chunin', 'Genin')
+async def terraform(ctx, *args):
+
+    COOLDOWN = 200
+    USER_CD = 1200
+    check_if_oncooldown(cooldowns, "terraform", COOLDOWN, USER_CD, ctx.channel.id, ctx.author.id)
+    count = cooldowns[ctx.channel.id]["terraform"]["users"][ctx.author.id]["count"]
+    xcount = cooldowns[ctx.channel.id]["terraform"]["count"]
+    global kills, nhabs
+
+    if ctx.author.id in kills: return
+    if count == 3:
+        cooldowns[ctx.channel.id]["terraform"]["count"] -= 1
+        return await ctx.send(random.choice(warnings_quotes))
+    if count >= 4:
+        kills.append(ctx.author.id)
+        return await ctx.send(random.choice(ignores))
+
+    args = list(args)
+    costs = [3 * (sum([earth, fire, metal, water, wood]) / 5) + 5 * 1.02 * gene / solana + 0.02 + grade +
+             1.017 * how_much_ki * ki / solana for grade, how_much_ki in
+             zip(seed_prices, [1800, 2500, 3600, 4900, 7100, 10000])]
+    bestcost, secondbest, thirdbest = sorted(costs)[:3]
+    best_grades = []
+    for i, cost in enumerate([bestcost, secondbest, thirdbest]):
+        grade = costs.index(cost) + 1
+        best_grades.append(grade)
+
+    nhabs_terraformed = {}
+    for nhab_id, nhab_info in nhabs.items():
+        if nhab_info["Status"] == "Brand new":
+            nhabs_terraformed[nhab_id] = nhab_info
+    nhabs_better_tobuy = {nhab_id: nhab_info for nhab_id, nhab_info in nhabs_terraformed.items() if
+                          nhab_info["Price"] < bestcost}
+    output_better_tobuy = "\nBetter to buy:\n"
+    for nhab_id, nhab_info in nhabs_better_tobuy.items():
+        output_better_tobuy += f"➤ # {nhab_id} - Level {nhab_info['Level']} - " \
+                               f"{nhab_info['Element']} - {nhab_info['Price']} sol\n"
+    if len(nhabs_better_tobuy.items()) == 0:
+        output_better_tobuy = ""
+
+    output_cost = bestcost if xcount == 0 else (secondbest if xcount == 1 else thirdbest)
+    grade = costs.index(output_cost) + 1
+
+    explanation = random.choice(["\n*Again, this terraform calculation is for the case where you buy all "
+                                 "ingredients with SOL.",
+                                 "\n*If you already have a seed, especially if it's grade 1, 2, or 3, it may be "
+                                 "more efficient to use that one rather than buying a new one.",
+                                 "\n*Seeds cost SOL, so having a seed before buying the other ingredients "
+                                 "reduces the cost of terraforming significantly.",
+                                 "\n*Note that even if you have a grade 3 seed, it's still (usually) better "
+                                 "to buy a grade 1 seed and terraform with that instead."])
+    if "all" in args:
+        output = f"Best cost:\n➤ {round(bestcost, 3)} SOL / {round(bestcost * solana, 2)} usd " \
+                 f"\n➤ for the Grade {best_grades[0]} Seed.\n" \
+                 f"\nSecond best:\n➤ {round(secondbest, 3)} SOL / {round(secondbest * solana, 2)} usd " \
+                 f"\n➤ for the Grade {best_grades[1]} Seed.\n" \
+                 f"\nThird best:\n➤ {round(thirdbest, 3)} SOL / {round(thirdbest * solana, 2)} usd " \
+                 f"\n➤ for the Grade {best_grades[2]} Seed.\n" + output_better_tobuy
+        cooldowns[ctx.channel.id]["terraform"]["users"][ctx.author.id]["count"] = 2
+        return await ctx.send(output)
+
+    if args and not any(word in args for word in ["explain", "explanation", "clarify", "detail"]):
+        if "second" in args:
+            output_cost = secondbest
+            grade = costs.index(output_cost) + 1
+            prefix = random.choice(["Second best:", "Second best is:", "Second best price:"])
+            cooldowns[ctx.channel.id]["terraform"]["count"] -= 1
+        elif "third" in args:
+            output_cost = thirdbest
+            grade = costs.index(output_cost) + 1
+            prefix = random.choice(["Third best:", "Third best is:", "Third best price is:"])
+            cooldowns[ctx.channel.id]["terraform"]["count"] -= 1
+        else:
+            output_cost = bestcost
+            grade = costs.index(output_cost) + 1
+            prefix = random.choice(["Best price is:", "Best price:", "Best is:", "Lowest price:", "Lowest price is:"])
+            cooldowns[ctx.channel.id]["terraform"]["count"] -= 1
+    elif args and any(word in args for word in ["explain", "explanation", "clarify", "detail"]):
+        if "second" in args:
+            output_cost = secondbest
+            grade = costs.index(output_cost) + 1
+            prefix = random.choice(["Second best:", "Second best is:", "Second best price:"])
+            cooldowns[ctx.channel.id]["terraform"]["count"] -= 1
+        elif "third" in args:
+            output_cost = thirdbest
+            grade = costs.index(output_cost) + 1
+            prefix = random.choice(["Third best:", "Third best is:", "Third best price is:"])
+            cooldowns[ctx.channel.id]["terraform"]["count"] -= 1
+        elif "best" in args or "lowest" in args:
+            output_cost = bestcost
+            grade = costs.index(output_cost) + 1
+            prefix = random.choice(["Best price is:", "Best price:", "Best is:", "Lowest price:", "Lowest price is:"])
+            cooldowns[ctx.channel.id]["terraform"]["users"][ctx.author.id]["count"] -= 1
+        else: return await ctx.send(explanation)
+    else:
+        if xcount == 0:
+            output_cost = bestcost
+            grade = costs.index(output_cost) + 1
+            prefix = random.choice(["Best price is:", "Best price:", "Best is:", "Lowest price:", "Lowest price is:"])
+        elif xcount == 1:
+            output_cost = secondbest
+            grade = costs.index(output_cost) + 1
+            prefix = random.choice(["Second best:", "Second best is:", "Second best price:"])
+        else:
+            output_cost = thirdbest
+            grade = costs.index(output_cost) + 1
+            prefix = random.choice(["Third best:", "Third best is:", "Third best price is:"])
+
+    output = f"{prefix}\n➤ {round(output_cost, 3)} SOL / {round(output_cost * solana, 2)} usd " \
+             f"\n➤ for the Grade {grade} Seed.\n" + output_better_tobuy
+    if any(word in args for word in ["explain", "explanation", "clarify", "detail"]):
+        output += explanation
+
+    return await ctx.send(output)
+
+@kakuzu.command(pass_context = True , aliases= ["pet", "gpet", "genesispet", "genesisgenopet", "genopets"])
+@commands.has_any_role('Hiddan', 'Jiraiya', 'Legendary Sannin', 'Jounin', 'Anbu', 'Chunin', 'Genin')
+async def genopet(ctx, *args):
+
+    COOLDOWN = 200
+    USER_CD = 1200
+    check_if_oncooldown(cooldowns, "genopet", COOLDOWN, USER_CD, ctx.channel.id, ctx.author.id)
+    count = cooldowns[ctx.channel.id]["genopet"]["users"][ctx.author.id]["count"]
+    xcount = cooldowns[ctx.channel.id]["genopet"]["count"]
+    global kills, gpets
+
+    if ctx.author.id in kills: return
+    if count == 4:
+        cooldowns[ctx.channel.id]["genopet"]["count"] -= 1
+        return await ctx.send(random.choice(warnings_quotes))
+    if count >= 5:
+        kills.append(ctx.author.id)
+        return await ctx.send(random.choice(ignores))
+
+    EXCEL_FILE_PATH = 'C:/Users/oct94/Desktop/Genesis Genopets.xlsx'
+    df = pd.read_excel(EXCEL_FILE_PATH)
+    all_genesis_pets = {}
+    for index, row in df.iterrows():
+        key = row['ID']
+        value = row['ADDRESS']
+        all_genesis_pets[key] = value
+
+    xp_forlevel = [0, 0, 1020, 2524, 4298, 6392, 8863, 12170, 16565, 22460, 30258, 40569, 52428, 66065, 81748, 99783,
+                   122662, 148058, 176247, 207537, 242269, 285062, 338554, 404787, 478789, 568332, 666829, 775176,
+                   894358, 1025458, 1137129, 1258851, 1391528, 1536146, 1693779, 1865599, 2052883, 2200736, 2360418,
+                   2532874, 2719127, 2920280, 3137525, 3372150, 3543593, 3727037, 3923322, 4133347, 4358073, 4598530,
+                   4855819, 5131118, 5425688, 5740878, 6078131, 6438992, 6825114, 7238264, 7680335, 8153350, 8659477,
+                   9201032, 9780496, 10400523, 11063952, 11773821, 12533380, 13346109, 14215729, 15146222, 16141849,
+                   17207170, 18347064, 19566750, 20871815, 22268234, 23762402, 25000000, 30000000]
+    args = list(args)
+    for i in args:
+        if "#" in i: i = i[1:]
+        try: i = int(i)
+        except ValueError: pass
+        if i in gpets:
+            output = f'\nGeneral stats:\n➤ {gpets[i]["Price"]} sol\n' \
+                     f'➤ Stage {gpets[i]["Stage"]}\n' \
+                     f'➤ Level {gpets[i]["Level"]}\n' \
+                     f'➤ XP {gpets[i]["XP"] - xp_forlevel[gpets[i]["Level"]]}\n' \
+                     f'➤ Algorythm {gpets[i]["Algorythm"]}\n\n' \
+                     f'➤ Augments: ({gpets[i]["Augments"]["Number"]})\n' \
+                     f'Head: {gpets[i]["Augments"]["Head"]}\n' \
+                     f'Body: {gpets[i]["Augments"]["Body"]}\n' \
+                     f'Antennae: {gpets[i]["Augments"]["Antennae"]}\n' \
+                     f'Ears: {gpets[i]["Augments"]["Ears"]}\n' \
+                     f'Horn: {gpets[i]["Augments"]["Horn"]}\n' \
+                     f'Eyes: {gpets[i]["Augments"]["Eyes"]}\n' \
+                     f'Mane: {gpets[i]["Augments"]["Mane"]}\n' \
+                     f'Wings: {gpets[i]["Augments"]["Wings"]}\n' \
+                     f'Tail: {gpets[i]["Augments"]["Tail"]}\n\n' \
+                     f'➤ Links:\n' \
+                     f'Solana Explorer:\n<https://explorer.solana.com/address/' \
+                     f'{gpets[i]["Mint address"]}/metadata>\n' \
+                     f'Owner:\n<https://solscan.io/account/' \
+                     f'{gpets[i]["Owner"]}#tokenAccounts>\n' \
+                     f'GenoDEX:\n<https://mainframe.genopets.me/genodex/{gpets[i]["Mint address"]}>\n' \
+                     f'Magic Eden:\n<https://magiceden.io/item-details/{gpets[i]["Mint address"]}' \
+                     f'?name=Genesis-Genopet-%23{i}>'
+            await ctx.send(f'{gpets[i]["Image"]}')
+            return await ctx.send(output)
+        elif i in all_genesis_pets:
+            r_genopet = requests.get(f"https://api.genopets.me/pet/{all_genesis_pets[i]}")
+            genopet_json = r_genopet.json()
+            genopet_dict = {"Stage": 0, "Level": 0, "XP": 0, "Algorythm": 0, "Mint address": "", "Augments":
+                {"Number": 2, "Head": None, "Body": None, "Antennae": None, "Ears": None, "Horn": None, "Eyes": None,
+                 "Mane": None, "Wings": None, "Tail": None}, "Image": ""}
+            genopet_dict["Mint address"] = genopet_json["id"]
+            genopet_dict["Image"] = genopet_json["image"]
+            for trait in genopet_json["attributes"]:
+                if trait["trait_type"] == "Algorithm":
+                    genopet_dict["Algorythm"] = trait["value"]
+                if trait["trait_type"] == "Current XP":
+                    genopet_dict["XP"] = trait["value"]
+                if trait["trait_type"] == "Level":
+                    genopet_dict["Level"] = trait["value"]
+                if trait["trait_type"] == "Pet Stage":
+                    genopet_dict["Stage"] = trait["value"]
+                if trait["trait_type"] == "Head":
+                    genopet_dict["Augments"]["Head"] = trait["value"]
+                if trait["trait_type"] == "Body":
+                    genopet_dict["Augments"]["Body"] = trait["value"]
+                if trait["trait_type"] == "Antennae":
+                    genopet_dict["Augments"]["Antennae"] = trait["value"]
+                    if genopet_dict["Augments"]["Antennae"] in ["Artaem", "Stagg", "Tarandi"]:
+                        genopet_dict["Augments"]["Antennae"] += " - Genesis - Legendary"
+                if trait["trait_type"] == "Ears":
+                    genopet_dict["Augments"]["Ears"] = trait["value"]
+                    if genopet_dict["Augments"]["Ears"] in ["Eyo", "Hurun", "Sciber"]:
+                        genopet_dict["Augments"]["Ears"] += " - Genesis - Legendary"
+                    if genopet_dict["Augments"]["Ears"] in ["Ferro"]:
+                        genopet_dict["Augments"]["Ears"] += " - Alkali - Legendary"
+                    if genopet_dict["Augments"]["Ears"] in ["Kuma"]:
+                        genopet_dict["Augments"]["Ears"] += " - free"
+                if trait["trait_type"] == "Horn":
+                    genopet_dict["Augments"]["Horn"] = trait["value"]
+                    if genopet_dict["Augments"]["Horn"] in ["Eri", "Klax", "Rem"]:
+                        genopet_dict["Augments"]["Horn"] += " - Genesis - Legendary"
+                    if genopet_dict["Augments"]["Horn"] in ["Sif"]:
+                        genopet_dict["Augments"]["Horn"] += " - Alkali - Rare"
+                if trait["trait_type"] == "Eyes":
+                    genopet_dict["Augments"]["Eyes"] = trait["value"]
+                    if genopet_dict["Augments"]["Eyes"] in ["Aeroan", "Horos", "Kiuryo", "Modo", "Motek", "Olipka",
+                                                            "Praus", "Valem", "Zorrin"]:
+                        genopet_dict["Augments"]["Eyes"] += " - Genesis - Legendary"
+                if trait["trait_type"] == "Mane":
+                    genopet_dict["Augments"]["Mane"] = trait["value"]
+                    if genopet_dict["Augments"]["Mane"] in ["Atto", "Kitan", "Tikata"]:
+                        genopet_dict["Augments"]["Mane"] += " - Genesis - Legendary"
+                if trait["trait_type"] == "Wings":
+                    genopet_dict["Augments"]["Wings"] = trait["value"]
+                    if genopet_dict["Augments"]["Wings"] in ["Caladrius", "Huitzilin", "Wyvern"]:
+                        genopet_dict["Augments"]["Wings"] += " - Genesis - Legendary"
+                    if genopet_dict["Augments"]["Wings"] in ["Dactyl"]:
+                        genopet_dict["Augments"]["Wings"] += " - Alkali - Rare"
+                    if genopet_dict["Augments"]["Wings"] in ["Areko"]:
+                        genopet_dict["Augments"]["Wings"] += " - free"
+                if trait["trait_type"] == "Tail":
+                    genopet_dict["Augments"]["Tail"] = trait["value"]
+                    if genopet_dict["Augments"]["Tail"] in ["Firon", "Flutterlye", "Gezegen", "Okioupo", "Scorpia"]:
+                        genopet_dict["Augments"]["Tail"] += " - Genesis - Legendary"
+                    if genopet_dict["Augments"]["Tail"] in ["Safir"]:
+                        genopet_dict["Augments"]["Tail"] += " - Alkali - Rare"
+                    if genopet_dict["Augments"]["Tail"] in ["Baikal", "Boran"]:
+                        genopet_dict["Augments"]["Tail"] += " - free"
+            genopet_dict["Augments"]["Number"] = len({k: v for k, v in genopet_dict["Augments"].items()
+                                                      if v is not None}) - 3
+            output = f'\nGeneral stats:\n' \
+                     f'➤ Stage {genopet_dict["Stage"]}\n' \
+                     f'➤ Level {genopet_dict["Level"]}\n' \
+                     f'➤ XP {genopet_dict["XP"] - xp_forlevel[genopet_dict["Level"]]}\n' \
+                     f'➤ Algorythm {genopet_dict["Algorythm"]}\n\n' \
+                     f'➤ Augments: ({genopet_dict["Augments"]["Number"]})\n' \
+                     f'Head: {genopet_dict["Augments"]["Head"]}\n' \
+                     f'Body: {genopet_dict["Augments"]["Body"]}\n' \
+                     f'Antennae: {genopet_dict["Augments"]["Antennae"]}\n' \
+                     f'Ears: {genopet_dict["Augments"]["Ears"]}\n' \
+                     f'Horn: {genopet_dict["Augments"]["Horn"]}\n' \
+                     f'Eyes: {genopet_dict["Augments"]["Eyes"]}\n' \
+                     f'Mane: {genopet_dict["Augments"]["Mane"]}\n' \
+                     f'Wings: {genopet_dict["Augments"]["Wings"]}\n' \
+                     f'Tail: {genopet_dict["Augments"]["Tail"]}\n\n' \
+                     f'➤ Links:\n' \
+                     f'Solana Explorer:\n<https://explorer.solana.com/address/' \
+                     f'{genopet_dict["Mint address"]}/metadata>\n' \
+                     f'GenoDEX:\n<https://mainframe.genopets.me/genodex/{genopet_dict["Mint address"]}>'
+            await ctx.send(f'{genopet_dict["Image"]}')
+            return await ctx.send(output)
+    return await ctx.send("This Genopet is not Genesis or doesn't exist.")
+
+@kakuzu.command(pass_context = True , aliases= ["habitats", "hab", "habs"])
+@commands.has_any_role('Hiddan', 'Jiraiya', 'Legendary Sannin', 'Jounin', 'Anbu', 'Chunin', 'Genin')
+async def habitat(ctx, *args):
+
+    COOLDOWN = 200
+    USER_CD = 1200
+    check_if_oncooldown(cooldowns, "habitat", COOLDOWN, USER_CD, ctx.channel.id, ctx.author.id)
+    count = cooldowns[ctx.channel.id]["habitat"]["users"][ctx.author.id]["count"]
+    xcount = cooldowns[ctx.channel.id]["habitat"]["count"]
+    global kills, nhabs, ghabs
+    habs = {**nhabs, **ghabs}
+
+    if ctx.author.id in kills: return
+    if count == 4:
+        cooldowns[ctx.channel.id]["habitat"]["count"] -= 1
+        return await ctx.send(random.choice(warnings_quotes))
+    if count >= 5:
+        kills.append(ctx.author.id)
+        return await ctx.send(random.choice(ignores))
+
+    args = list(args)
+    for i in args:
+        if "#" in i: i = i[1:]
+        try: i = int(i)
+        except ValueError: pass
+        if i in habs:
+            if (i in nhabs and i not in ghabs) or (i in ghabs and i not in nhabs):
+                if habs[i]["Status"] == "Dormant":
+                    habs[i]["Status"] += f"\nRestore with\n" \
+                                         f"{round(habs[i]['Restore cost'] * solana / ki)} ki / " \
+                                         f"{habs[i]['Restore cost']} sol" \
+                                         f"\nTotal cost {habs[i]['Restore cost'] + habs[i]['Price']} sol"
+                output = f'\nGeneral stats:\n➤ {habs[i]["Price"]} sol\n' \
+                         f'➤ {habs[i]["Type"]}\n' \
+                         f'➤ Level {habs[i]["Level"]}\n' \
+                         f'➤ {habs[i]["Status"]}\n' \
+                         f'➤ {habs[i]["Element"]}\n' \
+                         f'➤ Lifespan {habs[i]["Lifespan"]}\n' \
+                         f'➤ Durability {habs[i]["Durability"]}\n'
+                if habs[i]["Subhabitats"] is not None:
+                    output += f'➤ Subhabitats:\n{habs[i]["Subhabitats"]}\n'
+                output += f'\n➤ Links:\n' \
+                          f'Solana Explorer:\n<https://explorer.solana.com/address/' \
+                          f'{habs[i]["Mint address"]}/metadata>\n' \
+                          f'Owner:\n<https://solscan.io/account/' \
+                          f'{habs[i]["Owner"]}#tokenAccounts>\n' \
+                          f'Magic Eden:\n' \
+                          f'<https://magiceden.io/item-details/{habs[i]["Mint address"]}>'
+                if habs[i]["Status"] == "Used" or habs[i]["Status"] == "Brand new":
+                    await ctx.send(f'{habs[i]["Image"]}')
+                return await ctx.send(output)
+            else:
+                if habs[i]["Status"] == "Dormant":
+                    habs[i]["Status"] += f"\nRestore with\n" \
+                                         f"{round(habs[i]['Restore cost'] * solana / ki)} ki / " \
+                                         f"{habs[i]['Restore cost']} sol" \
+                                         f"\nTotal cost {habs[i]['Restore cost'] + habs[i]['Price']} sol"
+                output = f'\nGeneral stats:\n➤ {habs[i]["Price"]} sol\n' \
+                         f'➤ {habs[i]["Type"]}\n' \
+                         f'➤ Level {habs[i]["Level"]}\n' \
+                         f'➤ {habs[i]["Status"]}\n' \
+                         f'➤ {habs[i]["Element"]}\n' \
+                         f'➤ Lifespan {habs[i]["Lifespan"]}\n' \
+                         f'➤ Durability {habs[i]["Durability"]}\n'
+                if habs[i]["Subhabitats"] is not None:
+                    output += f'➤ Subhabitats:\n{habs[i]["Subhabitats"]}\n'
+                output += f'\n➤ Links:\n' \
+                          f'Solana Explorer:\n<https://explorer.solana.com/address/' \
+                          f'{habs[i]["Mint address"]}/metadata>\n' \
+                          f'Owner:\n<https://solscan.io/account/' \
+                          f'{habs[i]["Owner"]}#tokenAccounts>\n' \
+                          f'Magic Eden:\n<https://magiceden.io/item-details/{habs[i]["Mint address"]}' \
+                          f'?name={"Genesis-" if i in ghabs else ""}Habitat-%23{i}>'
+                if habs[i]["Status"] == "Used" or habs[i]["Status"] == "Brand new":
+                    await ctx.send(f'{habs[i]["Image"]}')
+                await ctx.send(output)
+
+                if nhabs[i]["Status"] == "Used" or nhabs[i]["Status"] == "Brand new":
+                    await ctx.send(f'{nhabs[i]["Image"]}')
+                if nhabs[i]["Status"] == "Dormant":
+                    nhabs[i]["Status"] += f"\nRestore with\n" \
+                                         f"{round(nhabs[i]['Restore cost'] * solana / ki)} ki / " \
+                                         f"{nhabs[i]['Restore cost']} sol" \
+                                         f"\nTotal cost {nhabs[i]['Restore cost'] + nhabs[i]['Price']} sol"
+                output = f'\nGeneral stats:\n➤ {nhabs[i]["Price"]} sol\n' \
+                         f'➤ {nhabs[i]["Type"]}\n' \
+                         f'➤ Level {nhabs[i]["Level"]}\n' \
+                         f'➤ {nhabs[i]["Status"]}\n' \
+                         f'➤ {nhabs[i]["Element"]}\n' \
+                         f'➤ Lifespan {nhabs[i]["Lifespan"]}\n' \
+                         f'➤ Durability {nhabs[i]["Durability"]}\n'
+                if nhabs[i]["Subhabitats"] is not None:
+                    output += f'➤ Subhabitats:\n{nhabs[i]["Subhabitats"]}\n'
+                output += f'\n➤ Links:\n' \
+                          f'Solana Explorer:\n<https://explorer.solana.com/address/' \
+                          f'{nhabs[i]["Mint address"]}/metadata>\n' \
+                          f'Owner:\n<https://solscan.io/account/' \
+                          f'{nhabs[i]["Owner"]}#tokenAccounts>\n' \
+                          f'Magic Eden:\n<https://magiceden.io/item-details/{nhabs[i]["Mint address"]}' \
+                          f'?name=Habitat-%23{i}>'
+                return await ctx.send(output)
+
+    return await ctx.send("This Habitat is not listed on Magic Eden or doesn't exist.")
+
+@kakuzu.command(pass_context=True, aliases=["aug", "augm", "agm", "augments"])
+@commands.has_any_role('Hiddan', 'Jiraiya', 'Legendary Sannin', 'Jounin', 'Anbu', 'Chunin', 'Genin')
+async def augment(ctx, *args):
+
+    COOLDOWN = 200
+    USER_CD = 1200
+    check_if_oncooldown(cooldowns, "augment", COOLDOWN, USER_CD, ctx.channel.id, ctx.author.id)
+    count = cooldowns[ctx.channel.id]["augment"]["users"][ctx.author.id]["count"]
+    xcount = cooldowns[ctx.channel.id]["augment"]["count"]
+    global kills, augments
+
+    if ctx.author.id in kills:
+        return
+    if count == 6:
+        cooldowns[ctx.channel.id]["augment"]["count"] -= 1
+        return await ctx.send(random.choice(warnings_quotes))
+    if count >= 7:
+        kills.append(ctx.author.id)
+        return await ctx.send(random.choice(ignores))
+
+    args = list(args)
+    found_part, found_style, found_variant, found_class = [None] * 4
+    mintcost = round(150 * ki / solana + 2 * gene / solana, 3)
+    matched_augments = []
+
+    for i in args:
+        if i.title() in ["Wing", "Tail", "Horn", "Mane", "Eye", "Antenna", "Ear"]:
+            found_part = i.title()
+        if i.title() in ["Pipelia", "Naruza", "Cirrus", "Tetra", "Moebu", "Anais", "Ukoba", "Keras", "Anut",
+                         "Sesho", "Drode", "Clavo", "Ishii", "Ikiri", "Agpo", "Sauro", "Idyon", "Aesha",
+                         "Xinxin", "Mau", "Bopplepaumf", "Dactyl", "Safir", "Sif", "Ferro"]:
+            found_style = i.title()
+        if i.title() in ["Basic", "Enhanced", "Superior", "Alkali"]:
+            found_variant = i.title()
+        if i.title() in ["Common", "Uncommon", "Rare", "Legendary"]:
+            found_class = i.title()
+
+    if found_variant is None and found_style is not None and found_class is not None:
+        found_variant = "Basic"
+    traits = [found_class, found_variant, found_style, found_part]
+    filtered_augments = augments[:]
+    for trait in traits:
+        if trait is not None:
+            filtered_augments = [augment for augment in filtered_augments if augment[traits.index(trait)] == trait]
+
+    if len(filtered_augments) == 1:
+        x = filtered_augments[0]
+        await ctx.send(x[6])
+        if x[1] != "Alkali":
+            if x[0] == "Uncommon":
+                mintcost = round(mintcost * 4, 3)
+            elif x[0] == "Rare" and x[1] != "Alkali":
+                mintcost = round(mintcost * 20, 3)
+        else:
+            mintcost = 0
+        output = f"➤ {x[4]} sol / {round(x[4] * solana / ki)} ki\n" \
+                 f"➤ {x[5]} listings\n"
+        if mintcost == 0:
+            output += "Not craftable again. Event only\n"
+        else:
+            output += f"Average mint cost: " \
+                      f"{mintcost} sol / {round(mintcost * solana / ki)} ki\n"
+        output += f"Evaluation: {x[8]} sol / {round(x[8] * solana / ki)} ki\n" \
+                  f"➤ Magic Eden:\n" \
+                  f"<https://magiceden.io/sft/{x[7]}?name={x[1]}-{x[2]}-{x[3]}>"
+        return await ctx.send(output)
+    elif len(filtered_augments) < 4:
+        output = ""
+        if filtered_augments[0][0] == "Uncommon":
+            mintcost = round(mintcost * 4, 3)
+        elif filtered_augments[0][0] == "Rare" and filtered_augments[0][1] != "Alkali":
+            mintcost = round(mintcost * 20, 3)
+        for augment in filtered_augments:
+            output += f"➤ {augment[0]} {augment[1]} {augment[2]} {augment[3]} {augment[4]} sol / " \
+                      f"{round(augment[4] * solana / ki)} ki\n"
+        if found_class is not None:
+            output += f"Average mint cost: " \
+                      f"{mintcost} sol / {round(mintcost * solana / ki)} ki"
+        return await ctx.send(output)
+    elif len(filtered_augments) < 5:
+        output = ""
+        for augment in filtered_augments:
+            output += f"➤ {augment[0]} {augment[1]} {augment[2]} {augment[3]} {augment[4]} sol / " \
+                      f"{round(augment[4] * solana / ki)} ki\n"
+        output += "Not craftable again. Event only"
+        return await ctx.send(output)
+    elif len(filtered_augments) < 10:
+        output = ""
+        for augment in filtered_augments:
+            output += f"➤ {augment[0]} {augment[1]} {augment[2]} {augment[3]} {augment[4]} sol / " \
+                      f"{round(augment[4] * solana / ki)} ki\n"
+        return await ctx.send(output)
+    else:
+        specific = ["Be more specific. / Check spelling.", "Unclear, rephrase it.", "Clarify that.",
+                    "Double-check.", "Lacking English skills.", "Be more specific, you brat.", "Come again?"]
+        return await ctx.send(random.choice(specific))
+
+@kakuzu.command(pass_context=True, aliases=["chromas", "chroma", "cosmetics", "chrome", "chromes"])
+@commands.has_any_role('Hiddan', 'Jiraiya', 'Legendary Sannin', 'Jounin', 'Anbu', 'Chunin', 'Genin')
+async def cosmetic(ctx, *args):
+
+    COOLDOWN = 200
+    USER_CD = 1200
+    check_if_oncooldown(cooldowns, "cosmetic", COOLDOWN, USER_CD, ctx.channel.id, ctx.author.id)
+    count = cooldowns[ctx.channel.id]["cosmetic"]["users"][ctx.author.id]["count"]
+    xcount = cooldowns[ctx.channel.id]["cosmetic"]["count"]
+    global kills, cosmetics
+
+    if ctx.author.id in kills:
+        return
+    if count == 6:
+        cooldowns[ctx.channel.id]["cosmetic"]["count"] -= 1
+        return await ctx.send(random.choice(warnings_quotes))
+    if count >= 7:
+        kills.append(ctx.author.id)
+        return await ctx.send(random.choice(ignores))
+
+    args = list(args)
+    found_palette, found_color, found_variant, found_family = [None] * 4
+    mintcost = round(120 * ki / solana + gene / solana, 3)
+
+    for i in args:
+        if i.title() in ["Adsynth", "Absynth", "Ads", "Abs", "Ad", "Ab", "Subsynth", "Subs", "Sub", "Lume"]:
+            found_family = i.title()
+        if i.title() == "Alkali":
+            found_variant = i.title()
+        if i.title() in ["Ultraviolet", "Violet", "Navy", "Sunray", "Sun", "Ray", "Light", "Pink", "Orange",
+                         "Yellow", "Teal", "Blue", "Purple", "Black", "White", "Lime", "Red", "Green"]:
+            found_color = i.title()
+        if i.title() in ["Neon", "Gunmetal", "Ash", "Natural", "Royal"]:
+            found_palette = i.title()
+
+    if found_color in ["Violet", "Navy"]:
+        found_color = "Ultraviolet"
+    if found_color in ["Sun", "Ray", "Light"]:
+        found_color = "Sunray"
+    if found_family == "Lume":
+        if found_color == "Red":
+            found_color = "Pink"
+        if found_color == "Green":
+            found_color = "Teal"
+    if found_family in ["Absynth", "Ads", "Abs", "Ad", "Ab"]:
+        found_family = "Adsynth"
+    if found_family in ["Subs", "Sub"]:
+        found_family = "Subsynth"
+
+    filtered_cosmetics = []
+    for cosmetic in cosmetics:
+        if found_variant == "Alkali":
+            if found_family != None:
+                if found_family == cosmetic[3] and found_variant == cosmetic[2]:
+                    filtered_cosmetics.append(cosmetic)
+            elif found_variant == cosmetic[2]:
+                filtered_cosmetics.append(cosmetic)
+        elif found_family == None:
+            if found_color != None:
+                if found_palette != None:
+                    if found_palette == cosmetic[0] and found_color == cosmetic[1]:
+                        filtered_cosmetics.append(cosmetic)
+                    elif found_color == cosmetic[1]:
+                        filtered_cosmetics.append(cosmetic)
+                elif found_color == cosmetic[1]:
+                    filtered_cosmetics.append(cosmetic)
+            elif found_palette != None:
+                if found_palette == cosmetic[0]:
+                    filtered_cosmetics.append(cosmetic)
+        else:
+            if found_color != None:
+                if found_color == cosmetic[1] and found_family == cosmetic[3]:
+                    filtered_cosmetics.append(cosmetic)
+            elif found_palette != None:
+                if found_family != None:
+                    if found_palette == cosmetic[0] and found_family == cosmetic[3]:
+                        filtered_cosmetics.append(cosmetic)
+                elif found_palette == cosmetic[0] and found_family == cosmetic[3]:
+                    filtered_cosmetics.append(cosmetic)
+            else:
+                if found_family == cosmetic[3]:
+                    filtered_cosmetics.append(cosmetic)
+
+    if len(filtered_cosmetics) == 0:
+        if found_family != None or found_color != None or found_palette != None or found_variant != None:
+            return await ctx.send("No such combination exists.")
+        else:
+            specific = ["Be more specific. / Check spelling.", "Unclear, rephrase it.", "Clarify that.",
+                        "Double-check.", "Lacking English skills.", "Be more specific, you brat.", "Come again?"]
+            output = random.choice(specific)
+            return await ctx.send(output)
+    elif len(filtered_cosmetics) == 1:
+        x = filtered_cosmetics[0]
+        await ctx.send(x[6])
+        if x[2] != "Alkali":
+            if x[3] == "Subsynth":
+                mintcost = round(230 * ki / solana + 2 * gene / solana, 3)
+        else:
+            mintcost = 0
+        output = f"➤ {x[4]} sol / {round(x[4] * solana / ki)} ki\n" \
+                 f"➤ {x[5]} listings\n"
+        if mintcost == 0:
+            output += "Not craftable again. Event only\n"
+        else:
+            output += f"Average mint cost: " \
+                      f"{mintcost} sol / {round(mintcost * solana / ki)} ki\n"
+        if x[2] != "Alkali":
+            output += f"Evaluation: {x[8]} sol / {round(x[8] * solana / ki)} ki\n" \
+                      f"➤ Magic Eden:\n" \
+                      f"<https://magiceden.io/sft/{x[7]}?name={x[0]}-{x[1]}-{x[3]}-Crystal>"
+        else:
+            output += f"Evaluation: {x[8]} sol / {round(x[8] * solana / ki)} ki\n" \
+                      f"➤ Magic Eden:\n" \
+                      f"<https://magiceden.io/sft/{x[7]}?name={x[2]}-{x[1]}-Chroma-Crystal>"
+    elif len(filtered_cosmetics) < 4:
+        output = ""
+        if found_variant == "Alkali":
+            for z in filtered_cosmetics:
+                output += f"➤ {z[2]} {z[3]} - {z[4]} sol / {round(z[4] * solana / ki)} ki\n"
+            output += "Not craftable again. Event only"
+        else:
+            for z in filtered_cosmetics:
+                output += f"➤ {z[2]} {z[3]} - {z[4]} sol / {round(z[4] * solana / ki)} ki\n"
+    elif found_family != None:
+        avg_cost = round(sum(t[4] for t in cosmetics if t[2] != "Alkali" and t[3] == found_family) /
+                         len([t for t in cosmetics if t[2] != "Alkali" and t[3] == found_family]), 3)
+        if found_family == "Subsynth":
+            mintcost = round(230 * ki / solana + 2 * gene / solana, 3)
+        output = f"Average price: {avg_cost} sol / {round(avg_cost * solana / ki)} ki\n" \
+                 f"Average mint cost: {mintcost} sol / {round(mintcost * solana / ki)} ki"
+    return await ctx.send(output)
+
+@kakuzu.command(pass_context=True, aliases=["harvestshares", "averageshares"])
+@commands.has_any_role('Hiddan', 'Jiraiya', 'Legendary Sannin', 'Jounin')
+async def shares(ctx, *args):
+
+    COOLDOWN = 120
+    USER_CD = 600
+    check_if_oncooldown(cooldowns, "shares", COOLDOWN, USER_CD, ctx.channel.id, ctx.author.id)
+    count = cooldowns[ctx.channel.id]["shares"]["users"][ctx.author.id]["count"]
+    xcount = cooldowns[ctx.channel.id]["shares"]["count"]
+
+    if ctx.author.id in kills:
+        return
+    if count == 3:
+        cooldowns[ctx.channel.id]["shares"]["count"] -= 1
+        return await ctx.send(random.choice(warnings_quotes))
+    if count >= 4:
+        kills.append(ctx.author.id)
+        return await ctx.send(random.choice(ignores))
+
+    EXCEL_FILE_PATH = 'C:/Users/oct94/Desktop/HabitatsNG.xlsx'
+    df = pd.read_excel(EXCEL_FILE_PATH)
+    habs = {}
+    for index, row in df.iterrows():
+        habs[row["Name"]] = {"Ki cap": row["Ki cap"], "Share": row["Royalty"]}
+
+    low_kicap_shares = []
+    medium_kicap_shares = []
+    high_kicap_shares = []
+    for i in habs:
+        if habs[i]["Ki cap"] < 100:
+            low_kicap_shares.append(habs[i]["Share"])
+        elif habs[i]["Ki cap"] < 177:
+            medium_kicap_shares.append(habs[i]["Share"])
+        else: high_kicap_shares.append(habs[i]["Share"])
+
+    low_kicap_shares = round(sum(low_kicap_shares) / len(low_kicap_shares), 2)
+    medium_kicap_shares = round(sum(medium_kicap_shares) / len(medium_kicap_shares), 2)
+    high_kicap_shares = round(sum(high_kicap_shares) / len(high_kicap_shares), 2)
+    total_average = round(sum([habs[i]["Share"] for i in habs]) / len(habs), 2)
+
+    output = f"Low Ki cap: {low_kicap_shares} %\n" \
+             f"Mid Ki cap: {medium_kicap_shares} %\n" \
+             f"High Ki cap: {high_kicap_shares} %\n\n" \
+             f"Total average: {total_average} %"
+    return await ctx.send(output)
+
+@kakuzu.command(pass_context=True, aliases=["restart", "reset"])
+@commands.has_any_role('Hiddan', 'Jiraiya', 'Legendary Sannin', 'Jounin')
+async def refresh(ctx):
+    await ctx.send(random.choice(processing))
+    global kills, cooldowns, timer
+    kills = []
+    cooldowns = {}
+    if timer: timer.cancel()
+    get_core_values()
+    return await ctx.send(random.choice(ready_notices))
+
+@kakuzu.command()
+@commands.has_any_role('Hiddan', 'Jiraiya', 'Legendary Sannin', 'Jounin')
+async def commands(ctx, *args):
+    message1 = "➤ Call me by: Kakuzu, kakuzu, Kz, kz\n" \
+              "and then follow with the name of the command:\n\n" \
+              "➤ ping: check if I'm online.\n" \
+              "aliases: here, here?, there, there?, on?\n" \
+              "example: kakuzu on?\n\n" \
+              "➤ i: use this for insults, compliments, or just to tell me a story.\n" \
+              "aliases: I, me, Me, I'm, i'm, im, you, You, youre, Youre, your, Your, you're, You're, fuck, Fuck\n" \
+              "examples: kakuzu i think you are awesome, kz youre dumb. kakuzu you know i ate a pizza yesterday.\n\n" \
+               "➤ price: use this to list whatever coins, tokens, NFTs or SFTs the guild is interested in.\n" \
+              "* I can list whatever number of coins as long as they're separated by a space and they are in my database.\n" \
+              "* I can also identify coins by their both short name or full name.\n" \
+              "aliases: list, get, cost, buy\n" \
+               "Coins: SOL, Gene, Ki, BTC, ETH, BNB, ADA, DOT, Gala, GMT, GST, WLKN, FITT, Town, ILV, MMY, VET,\n" \
+               "Sand, Mana, AXS, DAR, Alice, USD, USDC, USDT, BUSD\n" \
+               "SFTs and NFTs: crystals, seeds, reagents, alkali,\n" \
+               "foodtoys, foodstoys, foodandtoys, foodsandtoys - for food and toys\n" \
+               "pets, gpets, ggpets, genesispets - for best 10 Genesis Genopets by price/value ratio\n" \
+               "gpetsworst, genesispetsworst, petsworst - for listing worst 10 Genesis Genopets\n" \
+               "gpetscheap, gpetscheapest, petscheap, petscheapest - cheapest 10 Genesis Genopets\n" \
+               "gpetslvl, gpetslevel, petslvl, petslevel - highest levels 10 Genesis Genopets"
+    message2 = "\nhabitats, habs, hab, nhabs, nhab, nhabitats, rhabs, rhab, rhabitats - for\n" \
+               "best 10 regular Habitats you can buy - automatically calculates best deals\n" \
+               "habitatsnext, habsnext, habnext, nhabsnext, nhabnext, nhabitatsnext,\n" \
+               "rhabsnext, rhabnext, rhabitatsnext - for the following best 10 regular Habitats\n" \
+               "habitatsworst, habsworst, habworst, nhabsworst, nhabworst, nhabitatsworst,\n" \
+               "rhabsworst, rhabworst, rhabitatsworst - for worst 10 regular Habitats you could buy\n" \
+               "ghabitats, ghabs, ghab - for best 10 Genesis Habitats you can buy\n" \
+               "ghabitatsnext, ghabsnext, ghabnext - for the following best 10 Genesis Habitats\n" \
+               "ghabitatsworst, ghabsworst, ghabworst - for worst 10 Genesis Habitats you could buy\n" \
+               "chroma, chromas, cosmetic, cosmetics - for best 10 color crystals you can buy\n" \
+               "chromasnext, chromanext, cosmeticsnext, cosmeticnext - for the following best 10 chromas\n" \
+               "chromasworst, chromaworst, cosmeticsworst, cosmeticworst - for the worst 10 chromas\n" \
+              "examples: kz list sol, kakuzu price ether gst bitcoin bnb ki, Kz get mummy ilv walken\n" \
+               "kz list crystals btc gene ki habs ghabsworst gpetscheapest alkali\n\n" \
+              "➤ convert: calculate how much is whatever sum of a coin in another coin\n" \
+              "Structure must be this: kakuzu <name or alias of the command> <first coin> <number -optional- defaults to 1> \n" \
+              "<to/into/too/t/in/and> <second coin>\n" \
+              "aliases: swap, swp, exchange, change, turn\n" \
+              "examples: kz swap 68.34 sol to ki, kakuzu turn eth into illuvium, kakuzu exchange 84.3 btc and polkadot"
+    message3 = ".\n➤ rent: calculate rent for alchemy for a specific element, number of slots and number of weeks\n" \
+              "Structure is this: kakuzu rent <number of slots> <element> <slots/spots/crystals> for <number of weeks> weeks\n" \
+              "Element can also be normal/regular or genesis. Number of slots must be between 1 and 9.\n" \
+              "*aliases: rental, rate, rates, alchemy, alchemize, alch\n" \
+              "*examples:\n" \
+              "kakuzu rental for 7 wood spots\n" \
+              "kz rent 5 genesis slots for 2 weeks\n" \
+              "kakuzu rent genesis slots\n" \
+              "Kz alchemy for 9 regular spots for 45 weeks\n" \
+              "Kakuzu rent wood crystals\n" \
+              "Discounts depending on the number of weeks will be automatically applied.\n\n" \
+              "➤ terraform: calculate best costs for creating a new habitat by buying the ingredients with Solana\n" \
+              "You can use the function as is or can add other stuff besides like: second best cost, third, explain, all\n" \
+               "all - for giving you best 3 grades and costs in 1 message\n" \
+               "explain - for explanation related to terraforming\n" \
+              "*aliases: teraform, bestgrade, terraforming, teraforming, form\n" \
+              "*examples:\n" \
+              "Kakuzu terraform\n" \
+              "Kz form second best price\n" \
+              "kakuzu terraform explanation\n" \
+              "kz bestgrade for terraforming"
+    message4 = ".\n➤ genopet: give all information about a specific genopet by its id number.\n" \
+               "*aliases: pet, gpet, genesispet, genesisgenopet, genopets\n" \
+               "*examples: kz pet 2823, Kakuzu genopet #36, Kz gpet #659\n\n" \
+               "➤ habitat: give all information about a specific habitat by its id number.\n" \
+               "*aliases: habitats, habs, hab\n" \
+               "examples: kz hab 5984, kakuzu habitat #364, kz hab #4\n\n" \
+               "➤ augment: give all information abut a specific augment by its full name.\n" \
+               "Structure is this: kz augment <class><variant><style><body part>\n" \
+               "For body parts that are considered multiple use the singular form (wing, antenna, eye).\n" \
+               "You can skip the trait order or certain traits for a list of all possible options.\n" \
+               "*aliases: aug, augm, agm, augments\n" \
+               "*examples:\n" \
+               "kz agm rare tetra tail\n" \
+               "kakuzu augment uncommon superior naruza wing\n" \
+               "kz aug alkali sif horn\n" \
+               "kz agm ferro\n\n" \
+               "➤ cosmetic: give all information about a specific color crystal\n" \
+               "Structure is this: kz cosmetic <palette><color><variant><family>\n" \
+               "You can skip trait order or certain traits for a list of possible color crystals.\n" \
+               "*aliases: cosmetics, chroma, chromas\n" \
+               "*examples:\n" \
+               "kz chroma natural pink adsynth\n" \
+               "kz cosmetics alkali sub\n" \
+               "kz chroma light lume\n\n" \
+               "➤ refresh: reset all cooldowns and killed people and update SFT and NFT costs.\n" \
+              "* can be used only by jounins and up\n\n" \
+              "➤ commands: writes this very list of commands. * can be used only by jounins and up\n\n" \
+              "Don't piss me off, otherwise I will kill you!"
+    await ctx.send(message1)
+    await ctx.send(message2)
+    await ctx.send(message3)
+    return await ctx.send(message4)
+
+kakuzu.run(KAKUZU_TOKEN)
